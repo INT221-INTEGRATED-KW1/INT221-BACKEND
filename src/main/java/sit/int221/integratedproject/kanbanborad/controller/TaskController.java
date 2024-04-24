@@ -22,5 +22,4 @@ public class TaskController {
         return ResponseEntity.ok(taskService.findTaskById(id));
     }
 
-
 }

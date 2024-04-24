@@ -2,16 +2,16 @@ package sit.int221.integratedproject.kanbanborad.services;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
-import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.response.TaskAllResponseDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.response.TaskByIdResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.Task;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.TaskRepository;
 import sit.int221.integratedproject.kanbanborad.utils.ListMapper;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class TaskService {
@@ -22,15 +22,16 @@ public class TaskService {
     @Autowired
     private ListMapper listMapper;
 
-    public List<TaskResponseDTO> findAllTask() {
+    public List<TaskAllResponseDTO> findAllTask() {
         List<Task> tasks = taskRepository.findAll();
-        return listMapper.mapList(tasks, TaskResponseDTO.class);
+        return listMapper.mapList(tasks, TaskAllResponseDTO.class);
     }
 
-    public Task findTaskById(Integer id) {
-        return taskRepository.findById(id).orElseThrow(
-                () -> new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!")
-        );
+    public TaskByIdResponseDTO findTaskById(Integer id) {
+        Optional<Task> task = taskRepository.findById(id);
+        if (!task.isPresent()) {
+            throw new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!");
+        }
+        return modelMapper.map(task.get(), TaskByIdResponseDTO.class);
     }
-
 }
