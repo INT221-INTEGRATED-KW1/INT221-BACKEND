@@ -21,12 +21,12 @@ public class TaskByIdResponseDTO {
     @JsonFormat(pattern="dd-MM-yyyy HH:mm:ss")
     private Timestamp updatedOn;
     public String getTitle() {
-        return title.trim();
+        return title == null ? null : title.trim();
     }
     public String getDescription() {
-        return description.trim();
+        return description == null ? null : description.trim();
     }
     public String getAssignees() {
-        return assignees.trim();
+        return assignees == null ? null : assignees.trim();
     }
 }

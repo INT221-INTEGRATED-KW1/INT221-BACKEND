@@ -9,4 +9,10 @@ public class TaskAllResponseDTO {
     private String title;
     private String assignees;
     private Status status;
+    public String getTitle() {
+        return title == null ? null : title.trim();
+    }
+    public String getAssignees() {
+        return assignees == null ? null : assignees.trim();
+    }
 }
