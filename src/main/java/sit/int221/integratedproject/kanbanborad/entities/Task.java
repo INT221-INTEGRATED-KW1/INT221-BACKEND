@@ -35,11 +35,11 @@ public class Task {
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     private Status status;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     @NotNull(message = "CreatedOn can not be null")
     @Column(name = "createdOn")
     private Timestamp createdOn;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     @NotNull(message = "UpdatedOn can not be null")
     @Column(name = "updatedOn")
     private Timestamp updatedOn;
