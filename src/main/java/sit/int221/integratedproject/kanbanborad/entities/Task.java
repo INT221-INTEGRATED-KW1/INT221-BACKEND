@@ -5,13 +5,9 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-import lombok.Setter;
-import org.springframework.format.annotation.DateTimeFormat;
 import sit.int221.integratedproject.kanbanborad.models.Status;
 
 import java.sql.Timestamp;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
 @Entity
 @Table(name = "tasks")
@@ -43,13 +39,4 @@ public class Task {
     @NotNull(message = "UpdatedOn can not be null")
     @Column(name = "updatedOn")
     private Timestamp updatedOn;
-    public String getTitle() {
-        return title == null ? null : title.trim();
-    }
-    public String getDescription() {
-        return description == null ? null : description.trim();
-    }
-    public String getAssignees() {
-        return assignees == null ? null : assignees.trim();
-    }
 }
