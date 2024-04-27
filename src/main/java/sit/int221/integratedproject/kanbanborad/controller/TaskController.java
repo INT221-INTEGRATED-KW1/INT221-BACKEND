@@ -7,7 +7,7 @@ import sit.int221.integratedproject.kanbanborad.services.TaskService;
 
 @RestController
 @RequestMapping("/v1/tasks")
-@CrossOrigin(origins = "http://ip23kw1.sit.kmutt.ac.th:3000/v1/")
+@CrossOrigin(origins = "http://ip23kw1.sit.kmutt.ac.th:3000")
 public class TaskController {
     @Autowired
     private TaskService taskService;
