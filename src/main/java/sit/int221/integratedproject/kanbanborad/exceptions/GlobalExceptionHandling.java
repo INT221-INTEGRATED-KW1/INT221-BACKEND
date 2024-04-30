@@ -18,7 +18,7 @@ public class GlobalExceptionHandling {
     private ResponseEntity<ErrorResponse> buildErrorResponse(
             Exception exception, String message, HttpStatus httpStatus, WebRequest request) {
         String path = ((ServletWebRequest) request).getRequest().getRequestURI();
-        ErrorResponse errorResponse = new ErrorResponse(httpStatus.value(), "Not Found", message , path);
+        ErrorResponse errorResponse = new ErrorResponse(httpStatus.value(), httpStatus.getReasonPhrase(), message, path);
         return ResponseEntity.status(httpStatus).body(errorResponse);
     }
 }
