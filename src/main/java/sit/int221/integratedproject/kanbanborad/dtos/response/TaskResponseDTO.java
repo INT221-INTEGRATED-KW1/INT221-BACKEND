@@ -4,7 +4,7 @@ import lombok.Data;
 import sit.int221.integratedproject.kanbanborad.models.Status;
 
 @Data
-public class TaskAllResponseDTO {
+public class TaskResponseDTO {
     private Integer id;
     private String title;
     private String assignees;
