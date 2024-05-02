@@ -2,22 +2,22 @@ package sit.int221.integratedproject.kanbanborad.entities;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
-import org.hibernate.annotations.DynamicInsert;
-import org.hibernate.annotations.DynamicUpdate;
+import lombok.NoArgsConstructor;
 import sit.int221.integratedproject.kanbanborad.models.Status;
 
 import java.sql.Timestamp;
 
 @Entity
 @Table(name = "tasks")
+@NoArgsConstructor
+@AllArgsConstructor
 @Data
-@DynamicInsert
-@DynamicUpdate
+@Builder
 public class Task {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,10 +31,11 @@ public class Task {
     private String assignees;
     @NotNull(message = "Status can not be null")
     @Enumerated(EnumType.STRING)
-    @Column(name = "status")
     private Status status;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    @Column(insertable = false, updatable = false)
     private Timestamp createdOn;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    @Column(insertable = false, updatable = false)
     private Timestamp updatedOn;
 }

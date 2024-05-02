@@ -8,7 +8,6 @@ import sit.int221.integratedproject.kanbanborad.dtos.response.TaskAddEditRespons
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.Task;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
-import sit.int221.integratedproject.kanbanborad.models.Status;
 import sit.int221.integratedproject.kanbanborad.repositories.TaskRepository;
 import sit.int221.integratedproject.kanbanborad.utils.ListMapper;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
@@ -28,6 +27,7 @@ public class TaskService {
         List<Task> tasks = taskRepository.findAll();
         for (Task task : tasks) {
             task.setTitle(Utils.trimString(task.getTitle()));
+            task.setAssignees(Utils.trimString(task.getAssignees()));
         }
         return listMapper.mapList(tasks, TaskResponseDTO.class);
     }
@@ -37,6 +37,7 @@ public class TaskService {
                 .map(task -> {
                     task.setTitle(Utils.trimString(task.getTitle()));
                     task.setDescription(Utils.trimString(task.getDescription()));
+                    task.setAssignees(Utils.trimString(task.getAssignees()));
                     return task;
                 })
                 .orElseThrow(() -> new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!"));
@@ -44,9 +45,10 @@ public class TaskService {
 
     @Transactional
     public TaskAddEditResponseDTO createNewTask(Task task) {
-        task.setStatus(Utils.checkAndSetDefaultStatus(task.getStatus()));
         task.setTitle(Utils.trimString(task.getTitle()));
-        task.setDescription(Utils.trimString(task.getDescription()));
+        task.setDescription(Utils.checkAndSetDefaultNull(task.getDescription()));
+        task.setAssignees(Utils.checkAndSetDefaultNull(task.getAssignees()));
+        task.setStatus(Utils.checkAndSetDefaultStatus(task.getStatus()));
         return modelMapper.map(taskRepository.save(task), TaskAddEditResponseDTO.class);
     }
 
@@ -56,9 +58,9 @@ public class TaskService {
                 .orElseThrow(() -> new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!"));
 
         existingTask.setTitle(Utils.trimString(task.getTitle()));
-        existingTask.setDescription(Utils.trimString(task.getDescription()));
+        existingTask.setDescription(Utils.checkAndSetDefaultNull(task.getDescription()));
+        existingTask.setAssignees(Utils.checkAndSetDefaultNull(task.getAssignees()));
         existingTask.setStatus(Utils.checkAndSetDefaultStatus(task.getStatus()));
-        existingTask.setAssignees(task.getAssignees());
 
         Task updatedTask = taskRepository.save(existingTask);
         return modelMapper.map(updatedTask, TaskAddEditResponseDTO.class);
