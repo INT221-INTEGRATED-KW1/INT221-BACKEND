@@ -1,18 +1,18 @@
 package sit.int221.integratedproject.kanbanborad.services;
 
+import jakarta.transaction.Transactional;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import sit.int221.integratedproject.kanbanborad.dtos.response.TaskAllResponseDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.response.TaskAddEditResponseDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.Task;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.TaskRepository;
 import sit.int221.integratedproject.kanbanborad.utils.ListMapper;
+import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class TaskService {
@@ -23,27 +23,56 @@ public class TaskService {
     @Autowired
     private ListMapper listMapper;
 
-    public List<TaskAllResponseDTO> findAllTask() {
+    public List<TaskResponseDTO> findAllTask() {
         List<Task> tasks = taskRepository.findAll();
         for (Task task : tasks) {
-            task.setTitle(task.getTitle() != null ? task.getTitle().trim() : null);
-            task.setAssignees(task.getAssignees() != null ? task.getAssignees().trim() : null);
+            task.setTitle(Utils.trimString(task.getTitle()));
+            task.setAssignees(Utils.trimString(task.getAssignees()));
         }
-        return listMapper.mapList(tasks, TaskAllResponseDTO.class);
+        return listMapper.mapList(tasks, TaskResponseDTO.class);
     }
 
     public Task findTaskById(Integer id) {
-        Optional<Task> task = taskRepository.findById(id);
-        if (!task.isPresent()) {
-            throw new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!");
-        }
-        Task foundTask = task.get();
+        return taskRepository.findById(id)
+                .map(task -> {
+                    task.setTitle(Utils.trimString(task.getTitle()));
+                    task.setDescription(Utils.trimString(task.getDescription()));
+                    task.setAssignees(Utils.trimString(task.getAssignees()));
+                    return task;
+                })
+                .orElseThrow(() -> new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!"));
+    }
 
-        foundTask.setTitle(foundTask.getTitle() != null ? foundTask.getTitle().trim() : null);
-        foundTask.setDescription(foundTask.getDescription() != null ? foundTask.getDescription().trim() : null);
-        foundTask.setAssignees(foundTask.getAssignees() != null ? foundTask.getAssignees().trim() : null);
+    @Transactional
+    public TaskAddEditResponseDTO createNewTask(Task task) {
+        task.setTitle(Utils.trimString(task.getTitle()));
+        task.setDescription(Utils.checkAndSetDefaultNull(task.getDescription()));
+        task.setAssignees(Utils.checkAndSetDefaultNull(task.getAssignees()));
+        task.setStatus(Utils.checkAndSetDefaultStatus(task.getStatus()));
+        return modelMapper.map(taskRepository.save(task), TaskAddEditResponseDTO.class);
+    }
 
-        return foundTask;
+    @Transactional
+    public TaskAddEditResponseDTO updateTask(Integer id, Task task) {
+        Task existingTask = taskRepository.findById(id)
+                .orElseThrow(() -> new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!"));
+
+        existingTask.setTitle(Utils.trimString(task.getTitle()));
+        existingTask.setDescription(Utils.checkAndSetDefaultNull(task.getDescription()));
+        existingTask.setAssignees(Utils.checkAndSetDefaultNull(task.getAssignees()));
+        existingTask.setStatus(Utils.checkAndSetDefaultStatus(task.getStatus()));
+
+        Task updatedTask = taskRepository.save(existingTask);
+        return modelMapper.map(updatedTask, TaskAddEditResponseDTO.class);
+    }
+
+    @Transactional
+    public TaskResponseDTO deleteTask(Integer id) {
+        Task taskToDelete = taskRepository.findById(id)
+                .orElseThrow(() -> new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!"));
+
+        taskRepository.deleteById(id);
+        return modelMapper.map(taskToDelete, TaskResponseDTO.class);
     }
 
 }
