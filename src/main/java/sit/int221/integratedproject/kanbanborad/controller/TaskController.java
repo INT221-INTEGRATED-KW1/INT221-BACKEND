@@ -26,8 +26,6 @@ public class TaskController {
     @GetMapping("/{id}")
     public ResponseEntity<Task> getTaskById(@PathVariable Integer id) {
         return ResponseEntity.status(HttpStatus.OK).body(taskService.findTaskById(id));
-<<<<<<< HEAD
-=======
     }
 
     @PostMapping("")
@@ -43,7 +41,6 @@ public class TaskController {
     @DeleteMapping("/{id}")
     public ResponseEntity<TaskResponseDTO> removeTask(@PathVariable Integer id) {
         return ResponseEntity.status(HttpStatus.OK).body(taskService.deleteTask(id));
->>>>>>> dev
     }
 
     @PostMapping("")
