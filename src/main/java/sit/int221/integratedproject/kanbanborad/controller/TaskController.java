@@ -43,19 +43,4 @@ public class TaskController {
         return ResponseEntity.status(HttpStatus.OK).body(taskService.deleteTask(id));
     }
 
-    @PostMapping("")
-    public ResponseEntity<TaskAddEditResponseDTO> addNewTask(@RequestBody Task task) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(taskService.createNewTask(task));
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<TaskAddEditResponseDTO> updateTask(@PathVariable Integer id, @RequestBody Task task) {
-        return ResponseEntity.status(HttpStatus.OK).body(taskService.updateTask(id, task));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<TaskResponseDTO> removeTask(@PathVariable Integer id) {
-        return ResponseEntity.status(HttpStatus.OK).body(taskService.deleteTask(id));
-    }
-
 }
