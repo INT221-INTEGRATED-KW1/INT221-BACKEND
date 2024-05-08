@@ -17,7 +17,6 @@ import sit.int221.integratedproject.kanbanborad.utils.ListMapper;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class TaskService {
@@ -60,7 +59,7 @@ public class TaskService {
                 .title(Utils.trimString(taskDTO.getTitle()))
                 .description(Utils.checkAndSetDefaultNull(taskDTO.getDescription()))
                 .assignees(Utils.checkAndSetDefaultNull(taskDTO.getAssignees()))
-                .status(status) // ใช้ status ที่ค้นหาได้
+                .status(status)
                 .build();
 
         Task savedTask = taskRepository.save(task);

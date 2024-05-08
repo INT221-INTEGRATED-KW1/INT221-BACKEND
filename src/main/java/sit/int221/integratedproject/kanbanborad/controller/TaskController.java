@@ -9,19 +9,16 @@ import sit.int221.integratedproject.kanbanborad.dtos.request.TaskRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskAddEditResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskDetailResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
-import sit.int221.integratedproject.kanbanborad.entities.Task;
 import sit.int221.integratedproject.kanbanborad.services.TaskService;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/v1/tasks")
+@RequestMapping("/v2/tasks")
 @CrossOrigin(origins = "http://localhost")
 public class TaskController {
     @Autowired
     private TaskService taskService;
-    @Autowired
-    private ModelMapper modelMapper;
 
     @GetMapping("")
     public ResponseEntity<List<TaskResponseDTO>> getAllTask() {
