@@ -1,6 +1,5 @@
 package sit.int221.integratedproject.kanbanborad.utils;
 
-import sit.int221.integratedproject.kanbanborad.models.Status;
 
 public class Utils {
     public static String trimString(String input) {
@@ -12,8 +11,5 @@ public class Utils {
         } else {
             return input.trim();
         }
-    }
-    public static Status checkAndSetDefaultStatus(Status status) {
-        return status == null ? Status.NO_STATUS : status;
     }
 }

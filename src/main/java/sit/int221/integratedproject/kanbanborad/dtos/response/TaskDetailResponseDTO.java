@@ -1,7 +1,6 @@
-package sit.int221.integratedproject.kanbanborad.entities;
+package sit.int221.integratedproject.kanbanborad.dtos.response;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -9,34 +8,24 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import sit.int221.integratedproject.kanbanborad.entities.Status;
 
 import java.sql.Timestamp;
 
-@Entity
-@Table(name = "tasks")
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
-@Builder
-public class Task {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+public class TaskDetailResponseDTO {
     private Integer id;
-    @NotNull(message = "Title can not be null")
-    @Size(min = 1, max = 100)
     private String title;
-    @Size(min = 1, max = 500)
     private String description;
-    @Size(min = 1, max = 30)
     private String assignees;
-    @NotNull(message = "Status can not be null")
-    @ManyToOne
-    @JoinColumn(name = "status_id")
     private Status status;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
-    @Column(insertable = false, updatable = false)
     private Timestamp createdOn;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
-    @Column(insertable = false, updatable = false)
     private Timestamp updatedOn;
+    public String getStatus() {
+        return this.status.getName();
+    }
 }
