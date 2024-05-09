@@ -1,12 +1,17 @@
 package sit.int221.integratedproject.kanbanborad.exceptions;
 
+import jakarta.validation.ConstraintViolation;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandling {
@@ -22,7 +27,7 @@ public class GlobalExceptionHandling {
     }
     @ExceptionHandler(BadRequestException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ResponseEntity<ErrorResponse> handleBadRequestException(Exception exception, WebRequest request) {
+    public ResponseEntity<ErrorResponse> handleBadRequestException(BadRequestException exception, WebRequest request) {
         return buildErrorResponse(exception, exception.getMessage(), HttpStatus.BAD_REQUEST, request);
     }
     private ResponseEntity<ErrorResponse> buildErrorResponse(

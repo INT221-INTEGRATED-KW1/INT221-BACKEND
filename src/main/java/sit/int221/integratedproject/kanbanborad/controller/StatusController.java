@@ -5,8 +5,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import sit.int221.integratedproject.kanbanborad.dtos.request.StatusRequestDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.request.StatusTransferRequestDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.request.TaskRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.*;
 import sit.int221.integratedproject.kanbanborad.services.StatusService;
 
@@ -30,12 +28,12 @@ public class StatusController {
     }
 
     @PostMapping("")
-    public ResponseEntity<StatusResponseDTO> addNewTask(@RequestBody StatusRequestDTO statusDTO) {
+    public ResponseEntity<StatusAddEditResponseDTO> addNewStatus(@RequestBody StatusRequestDTO statusDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(statusService.createNewStatus(statusDTO));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<StatusResponseDTO> updateStatus(@PathVariable Integer id,
+    public ResponseEntity<StatusAddEditResponseDTO> updateStatus(@PathVariable Integer id,
                                                                @RequestBody StatusRequestDTO statusDTO) {
         return ResponseEntity.status(HttpStatus.OK).body(statusService.updateStatus(id, statusDTO));
     }

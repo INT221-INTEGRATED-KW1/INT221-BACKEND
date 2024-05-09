@@ -29,6 +29,9 @@ public class Status {
     private String name;
     @Size(min = 1, max = 200)
     private String description;
+    @NotNull(message = "color can not be null")
+    @Size(min = 1, max = 20)
+    private String color;
     @JsonIgnore
     @OneToMany(mappedBy = "status")
     private List<Task> tasks = new ArrayList<>();

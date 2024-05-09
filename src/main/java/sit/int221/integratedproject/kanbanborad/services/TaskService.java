@@ -1,6 +1,7 @@
 package sit.int221.integratedproject.kanbanborad.services;
 
 import jakarta.transaction.Transactional;
+import jakarta.validation.ConstraintViolationException;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -10,6 +11,7 @@ import sit.int221.integratedproject.kanbanborad.dtos.response.TaskDetailResponse
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.Status;
 import sit.int221.integratedproject.kanbanborad.entities.Task;
+import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.StatusRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.TaskRepository;
@@ -49,18 +51,20 @@ public class TaskService {
 
     @Transactional
     public TaskAddEditResponseDTO createNewTask(TaskRequestDTO taskDTO) {
-        Status status = statusRepository.findByName(taskDTO.getStatus()).orElse(null);
+        if (taskDTO.getTitle() == null) {
+            throw new BadRequestException("title can not be null");
+        }
+        String statusName = taskDTO.getStatus();
+        Status status = statusRepository.findByName(statusName).orElse(null);
 
         if (status == null) {
-            status = statusRepository.findById(1).orElse(null);
+            status = statusRepository.findByName("NO_STATUS").orElse(null);
         }
-
-        Task task = Task.builder()
-                .title(Utils.trimString(taskDTO.getTitle()))
-                .description(Utils.checkAndSetDefaultNull(taskDTO.getDescription()))
-                .assignees(Utils.checkAndSetDefaultNull(taskDTO.getAssignees()))
-                .status(status)
-                .build();
+        Task task = new Task();
+        task.setTitle(Utils.trimString(taskDTO.getTitle()));
+        task.setDescription(Utils.checkAndSetDefaultNull(taskDTO.getDescription()));
+        task.setAssignees(Utils.checkAndSetDefaultNull(taskDTO.getAssignees()));
+        task.setStatus(status);
 
         Task savedTask = taskRepository.save(task);
         return modelMapper.map(savedTask, TaskAddEditResponseDTO.class);
@@ -68,6 +72,7 @@ public class TaskService {
 
     @Transactional
     public TaskAddEditResponseDTO updateTask(Integer id, TaskRequestDTO taskDTO) {
+        String statusName = taskDTO.getStatus();
         Task existingTask = taskRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!"));
 
@@ -75,9 +80,9 @@ public class TaskService {
         existingTask.setDescription(Utils.checkAndSetDefaultNull(taskDTO.getDescription()));
         existingTask.setAssignees(Utils.checkAndSetDefaultNull(taskDTO.getAssignees()));
 
-        Status status = statusRepository.findByName(taskDTO.getStatus()).orElse(null);
+        Status status = statusRepository.findByName(statusName).orElse(null);
         if (status == null) {
-            status = statusRepository.findById(1).orElse(null);
+            status = statusRepository.findByName("NO_STATUS").orElse(null);
         }
         existingTask.setStatus(status);
 
