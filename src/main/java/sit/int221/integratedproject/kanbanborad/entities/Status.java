@@ -17,7 +17,6 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
-@Builder
 public class Status {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

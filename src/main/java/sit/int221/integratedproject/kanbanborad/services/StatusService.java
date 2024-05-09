@@ -5,7 +5,6 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import sit.int221.integratedproject.kanbanborad.dtos.request.StatusRequestDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.response.StatusAddEditResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusResponseDetailDTO;
 import sit.int221.integratedproject.kanbanborad.entities.Status;
@@ -36,6 +35,7 @@ public class StatusService {
         for (Status status : statuses) {
             status.setName(Utils.trimString(status.getName()));
             status.setDescription(Utils.trimString(status.getDescription()));
+            status.setColor(Utils.trimString(status.getColor()));
         }
         return listMapper.mapList(statuses, StatusResponseDTO.class);
     }
@@ -54,38 +54,39 @@ public class StatusService {
     }
 
     @Transactional
-    public StatusAddEditResponseDTO createNewStatus(StatusRequestDTO statusDTO) {
+    public StatusResponseDTO createNewStatus(StatusRequestDTO statusDTO) {
         Status status = new Status();
         status.setName(Utils.trimString(statusDTO.getName()));
         status.setDescription(Utils.trimString(statusDTO.getDescription()));
         status.setColor(Utils.trimString(statusDTO.getColor()));
         List<Status> statuses = statusRepository.findAll();
-        for (Status statusLoop : statuses) {
-            if (statusLoop.getName().equals(status.getName())) {
-                throw new BadRequestException("Could not execute due to duplicate status name.");
-            }
-            if (statusLoop.getColor().equals(status.getColor())) {
-                throw new BadRequestException("Could not execute due to duplicate color name.");
-            }
+        boolean isDuplicateName = statuses.stream().anyMatch(s -> s.getName().equals(status.getName()));
+        boolean isDuplicateColor = statuses.stream().anyMatch(s -> s.getColor().equals(status.getColor()));
+        if (isDuplicateName) {
+            throw new BadRequestException("Status with name '" + status.getName() + "' already exists.");
+        }
+        if (isDuplicateColor) {
+            throw new BadRequestException("Status with color '" + status.getColor() + "' already exists.");
         }
 
         Status savedStatus = statusRepository.save(status);
-        return modelMapper.map(savedStatus, StatusAddEditResponseDTO.class);
+        return modelMapper.map(savedStatus, StatusResponseDTO.class);
     }
 
     @Transactional
-    public StatusAddEditResponseDTO updateStatus(Integer id, StatusRequestDTO statusDTO) {
-        if (statusDTO.getName().equals("NO_STATUS")) {
-            throw new GeneralException("can not edit NO_STATUS status");
-        }
+    public StatusResponseDTO updateStatus(Integer id, StatusRequestDTO statusDTO) {
         Status existingStatus = statusRepository.findById(id)
                         .orElseThrow(() -> new ItemNotFoundException("Status Id " + id + " DOES NOT EXIST !!!"));
+        if (existingStatus.getName().equals("NO_STATUS")) {
+            throw new GeneralException("Cannot edit 'NO_STATUS' status.");
+        }
+
         existingStatus.setName(Utils.trimString(statusDTO.getName()));
         existingStatus.setDescription(Utils.trimString(statusDTO.getDescription()));
         existingStatus.setColor(Utils.trimString(statusDTO.getColor()));
 
         Status updatedStatus = statusRepository.save(existingStatus);
-        return modelMapper.map(updatedStatus, StatusAddEditResponseDTO.class);
+        return modelMapper.map(updatedStatus, StatusResponseDTO.class);
     }
 
     @Transactional
@@ -93,10 +94,10 @@ public class StatusService {
         Status statusToDelete = statusRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Status Id " + id + " DOES NOT EXIST !!!"));
         if (!statusToDelete.getTasks().isEmpty()) {
-            throw new GeneralException("can not delete cuz status has task");
+            throw new GeneralException("Cannot delete status because it has associated tasks.");
         }
         if (statusToDelete.getName().equals("NO_STATUS")) {
-            throw new GeneralException("can not delete NO_STATUS status");
+            throw new GeneralException("Cannot delete 'NO_STATUS' status.");
         }
         statusRepository.deleteById(id);
         return modelMapper.map(statusToDelete, StatusResponseDTO.class);
@@ -108,15 +109,12 @@ public class StatusService {
                 .orElseThrow(() -> new ItemNotFoundException("Status Id " + id + " DOES NOT EXIST !!!"));
         Status transferStatus = statusRepository.findById(newId)
                 .orElseThrow(() -> new ItemNotFoundException("Status Id " + newId + " DOES NOT EXIST !!!"));
-
-        List<Task> tasks = taskRepository.findByStatusId(id);
-        for (Task task : tasks) {
-            task.setStatus(transferStatus);
-            taskRepository.save(task);
-        }
         if (statusToDelete.getName().equals("NO_STATUS")) {
-            throw new GeneralException("can not delete NO_STATUS status");
+            throw new GeneralException("Cannot delete 'NO_STATUS' status.");
         }
+        List<Task> tasks = taskRepository.findByStatusId(id);
+        tasks.forEach(task -> task.setStatus(transferStatus));
+        taskRepository.saveAll(tasks);
 
         statusRepository.deleteById(statusToDelete.getId());
 
