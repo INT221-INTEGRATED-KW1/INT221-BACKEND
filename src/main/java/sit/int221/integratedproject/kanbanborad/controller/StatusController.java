@@ -19,12 +19,12 @@ public class StatusController {
     private StatusService statusService;
 
     @GetMapping("")
-    public ResponseEntity<List<StatusResponseDTO>> getAllStatus() {
+    public ResponseEntity<List<StatusResponseDetailDTO>> getAllStatus() {
         return ResponseEntity.status(HttpStatus.OK).body(statusService.findAllStatus());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<StatusResponseDetailDTO> getTaskById(@PathVariable Integer id) {
+    public ResponseEntity<StatusResponseDTO> getTaskById(@PathVariable Integer id) {
         return ResponseEntity.status(HttpStatus.OK).body(statusService.findStatusById(id));
     }
 

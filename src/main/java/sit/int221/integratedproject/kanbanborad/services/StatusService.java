@@ -17,6 +17,7 @@ import sit.int221.integratedproject.kanbanborad.repositories.TaskRepository;
 import sit.int221.integratedproject.kanbanborad.utils.ListMapper;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -30,24 +31,27 @@ public class StatusService {
     @Autowired
     private ListMapper listMapper;
 
-    public List<StatusResponseDTO> findAllStatus() {
+    public List<StatusResponseDetailDTO> findAllStatus() {
         List<Status> statuses = statusRepository.findAll();
+        List<StatusResponseDetailDTO> statusResponseDTOs = new ArrayList<>();
         for (Status status : statuses) {
-            status.setName(Utils.trimString(status.getName()));
-            status.setDescription(Utils.trimString(status.getDescription()));
-            status.setColor(Utils.trimString(status.getColor()));
+            StatusResponseDetailDTO statusResponseDTO = modelMapper.map(status, StatusResponseDetailDTO.class);
+            statusResponseDTO.setName(Utils.trimString(status.getName()));
+            statusResponseDTO.setDescription(Utils.trimString(status.getDescription()));
+            statusResponseDTO.setColor(Utils.trimString(status.getColor()));
+            statusResponseDTO.setCountTask(status.getTasks().size());
+            statusResponseDTOs.add(statusResponseDTO);
         }
-        return listMapper.mapList(statuses, StatusResponseDTO.class);
+        return statusResponseDTOs;
     }
 
-    public StatusResponseDetailDTO findStatusById(Integer id) {
+    public StatusResponseDTO findStatusById(Integer id) {
         return statusRepository.findById(id)
                 .map(status -> {
-                    StatusResponseDetailDTO statusResponseDTO  = modelMapper.map(status, StatusResponseDetailDTO.class);
+                    StatusResponseDTO statusResponseDTO  = modelMapper.map(status, StatusResponseDTO.class);
                     statusResponseDTO.setName(Utils.trimString(status.getName()));
                     statusResponseDTO.setDescription(Utils.trimString(status.getDescription()));
                     statusResponseDTO.setColor(Utils.trimString(status.getColor()));
-                    statusResponseDTO.setCountTask(status.getTasks().size());
                     return statusResponseDTO;
                 })
                 .orElseThrow(() -> new ItemNotFoundException("Status Id " + id + " DOES NOT EXIST !!!"));
