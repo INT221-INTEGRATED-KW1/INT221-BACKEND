@@ -65,12 +65,8 @@ public class StatusService {
         status.setColor(Utils.trimString(statusDTO.getColor()));
         List<Status> statuses = statusRepository.findAll();
         boolean isDuplicateName = statuses.stream().anyMatch(s -> s.getName().equals(status.getName()));
-        boolean isDuplicateColor = statuses.stream().anyMatch(s -> s.getColor().equals(status.getColor()));
         if (isDuplicateName) {
             throw new BadRequestException("Status with name '" + status.getName() + "' already exists.");
-        }
-        if (isDuplicateColor) {
-            throw new BadRequestException("Status with color '" + status.getColor() + "' already exists.");
         }
 
         Status savedStatus = statusRepository.save(status);
