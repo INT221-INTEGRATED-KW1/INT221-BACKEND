@@ -12,4 +12,7 @@ public class TaskResponseDTO {
     public String getStatus() {
         return this.status.getName();
     }
+    public String getColor() {
+        return this.status.getColor();
+    }
 }
