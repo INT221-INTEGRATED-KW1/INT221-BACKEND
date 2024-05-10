@@ -1,7 +1,7 @@
 package sit.int221.integratedproject.kanbanborad.dtos.response;
 
 import lombok.Data;
-import sit.int221.integratedproject.kanbanborad.models.Status;
+import sit.int221.integratedproject.kanbanborad.entities.Status;
 
 @Data
 public class TaskAddEditResponseDTO {
@@ -10,4 +10,7 @@ public class TaskAddEditResponseDTO {
     private String description;
     private String assignees;
     private Status status;
+    public String getStatus() {
+        return this.status.getName();
+    }
 }

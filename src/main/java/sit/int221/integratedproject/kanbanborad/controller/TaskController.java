@@ -1,18 +1,22 @@
 package sit.int221.integratedproject.kanbanborad.controller;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import sit.int221.integratedproject.kanbanborad.dtos.request.TaskRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskAddEditResponseDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.response.TaskDetailResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
-import sit.int221.integratedproject.kanbanborad.entities.Task;
 import sit.int221.integratedproject.kanbanborad.services.TaskService;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/v1/tasks")
+@RequestMapping("/v2/tasks")
 @CrossOrigin(origins = "http://ip23kw1.sit.kmutt.ac.th:80")
 public class TaskController {
     @Autowired
@@ -24,36 +28,17 @@ public class TaskController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Task> getTaskById(@PathVariable Integer id) {
+    public ResponseEntity<TaskDetailResponseDTO> getTaskById(@PathVariable Integer id) {
         return ResponseEntity.status(HttpStatus.OK).body(taskService.findTaskById(id));
-<<<<<<< HEAD
-=======
-    }
 
     @PostMapping("")
-    public ResponseEntity<TaskAddEditResponseDTO> addNewTask(@RequestBody Task task) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(taskService.createNewTask(task));
+    public ResponseEntity<TaskAddEditResponseDTO> addNewTask(@RequestBody TaskRequestDTO taskDTO) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(taskService.createNewTask(taskDTO));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<TaskAddEditResponseDTO> updateTask(@PathVariable Integer id, @RequestBody Task task) {
-        return ResponseEntity.status(HttpStatus.OK).body(taskService.updateTask(id, task));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<TaskResponseDTO> removeTask(@PathVariable Integer id) {
-        return ResponseEntity.status(HttpStatus.OK).body(taskService.deleteTask(id));
->>>>>>> dev
-    }
-
-    @PostMapping("")
-    public ResponseEntity<TaskAddEditResponseDTO> addNewTask(@RequestBody Task task) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(taskService.createNewTask(task));
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<TaskAddEditResponseDTO> updateTask(@PathVariable Integer id, @RequestBody Task task) {
-        return ResponseEntity.status(HttpStatus.OK).body(taskService.updateTask(id, task));
+    public ResponseEntity<TaskAddEditResponseDTO> updateTask(@PathVariable Integer id, @RequestBody TaskRequestDTO taskDTO) {
+        return ResponseEntity.status(HttpStatus.OK).body(taskService.updateTask(id, taskDTO));
     }
 
     @DeleteMapping("/{id}")

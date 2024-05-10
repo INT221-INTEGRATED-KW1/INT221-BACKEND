@@ -4,11 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import sit.int221.integratedproject.kanbanborad.models.Status;
+import lombok.*;
 
 import java.sql.Timestamp;
 
@@ -17,7 +13,6 @@ import java.sql.Timestamp;
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
-@Builder
 public class Task {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,7 +25,8 @@ public class Task {
     @Size(min = 1, max = 30)
     private String assignees;
     @NotNull(message = "Status can not be null")
-    @Enumerated(EnumType.STRING)
+    @ManyToOne
+    @JoinColumn(name = "status_id")
     private Status status;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     @Column(insertable = false, updatable = false)

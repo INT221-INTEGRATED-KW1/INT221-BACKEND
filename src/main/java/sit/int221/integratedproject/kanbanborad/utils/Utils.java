@@ -1,7 +1,5 @@
 package sit.int221.integratedproject.kanbanborad.utils;
 
-import sit.int221.integratedproject.kanbanborad.models.Status;
-
 public class Utils {
     public static String trimString(String input) {
         return input != null ? input.trim() : null;
@@ -13,7 +11,25 @@ public class Utils {
             return input.trim();
         }
     }
-    public static Status checkAndSetDefaultStatus(Status status) {
-        return status == null ? Status.NO_STATUS : status;
+    public static String checkAndSetDefaultStatus(String status) {
+        return status == null ? "NO_STATUS" : status;
     }
+//    public static String getString(Status status) {
+//        if (status == null || status.getId() == null) {
+//            // หากไม่ได้รับค่า status หรือได้รับค่า null มา
+//            return "NO_STATUS";
+//        } else {
+//            Integer id = status.getId();
+//            if (id.equals(1)) {
+//                return "NO_STATUS";
+//            } else if (id.equals(2)) {
+//                return "TO_DO";
+//            } else if (id.equals(3)) {
+//                return "DOING";
+//            } else if (id.equals(4)) {
+//                return "DONE";
+//            }
+//            return null;
+//        }
+//    }
 }
