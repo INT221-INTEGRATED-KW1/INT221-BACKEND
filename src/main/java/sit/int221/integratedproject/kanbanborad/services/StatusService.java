@@ -61,7 +61,7 @@ public class StatusService {
     public StatusResponseDTO createNewStatus(StatusRequestDTO statusDTO) {
         Status status = new Status();
         status.setName(Utils.trimString(statusDTO.getName()));
-        status.setDescription(Utils.trimString(statusDTO.getDescription()));
+        status.setDescription(Utils.checkAndSetDefaultNull(statusDTO.getDescription()));
         status.setColor(Utils.trimString(statusDTO.getColor()));
         List<Status> statuses = statusRepository.findAll();
         boolean isDuplicateName = statuses.stream().anyMatch(s -> s.getName().equals(status.getName()));
@@ -82,7 +82,7 @@ public class StatusService {
         }
 
         existingStatus.setName(Utils.trimString(statusDTO.getName()));
-        existingStatus.setDescription(Utils.trimString(statusDTO.getDescription()));
+        existingStatus.setDescription(Utils.checkAndSetDefaultNull(statusDTO.getDescription()));
         existingStatus.setColor(Utils.trimString(statusDTO.getColor()));
 
         Status updatedStatus = statusRepository.save(existingStatus);
