@@ -1,8 +1,5 @@
 package sit.int221.integratedproject.kanbanborad.controller;
 
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.ConstraintViolationException;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +14,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/v2/tasks")
-@CrossOrigin(origins = "http://ip23kw1.sit.kmutt.ac.th")
+@CrossOrigin(origins = {"http://ip23kw1.sit.kmutt.ac.th", "http://intproj23.sit.kmutt.ac.th"})
 public class TaskController {
     @Autowired
     private TaskService taskService;
@@ -30,6 +27,7 @@ public class TaskController {
     @GetMapping("/{id}")
     public ResponseEntity<TaskDetailResponseDTO> getTaskById(@PathVariable Integer id) {
         return ResponseEntity.status(HttpStatus.OK).body(taskService.findTaskById(id));
+    }
 
     @PostMapping("")
     public ResponseEntity<TaskAddEditResponseDTO> addNewTask(@RequestBody TaskRequestDTO taskDTO) {
