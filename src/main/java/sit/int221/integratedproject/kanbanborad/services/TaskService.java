@@ -54,10 +54,13 @@ public class TaskService {
         if (taskDTO.getTitle() == null) {
             throw new BadRequestException("title can not be null");
         }
-        String statusName = taskDTO.getStatus();
-        Status status = statusRepository.findByName(statusName).orElse(null);
+        Integer statusId = taskDTO.getStatus();
+        Status status = statusRepository.findById(statusId).orElse(null);
 
         if (status == null) {
+            throw new ItemNotFoundException("Can not add New Task with not existing status id");
+        }
+        if (status.getName() == null) {
             status = statusRepository.findByName(Utils.NO_STATUS).orElse(null);
         }
         Task task = new Task();
@@ -72,7 +75,7 @@ public class TaskService {
 
     @Transactional
     public TaskAddEditResponseDTO updateTask(Integer id, TaskRequestDTO taskDTO) {
-        String statusName = taskDTO.getStatus();
+        Integer statusId = taskDTO.getStatus();
         Task existingTask = taskRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!"));
 
@@ -80,9 +83,12 @@ public class TaskService {
         existingTask.setDescription(Utils.checkAndSetDefaultNull(taskDTO.getDescription()));
         existingTask.setAssignees(Utils.checkAndSetDefaultNull(taskDTO.getAssignees()));
 
-        Status status = statusRepository.findByName(statusName).orElse(null);
+        Status status = statusRepository.findById(statusId).orElse(null);
         if (status == null) {
-            status = statusRepository.findByName("NO_STATUS").orElse(null);
+            throw new ItemNotFoundException("Can not add New Task with not existing status id");
+        }
+        if (status.getName() == null) {
+            status = statusRepository.findByName(Utils.NO_STATUS).orElse(null);
         }
         existingTask.setStatus(status);
 

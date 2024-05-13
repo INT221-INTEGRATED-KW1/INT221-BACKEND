@@ -21,7 +21,4 @@ public class TaskDetailResponseDTO {
     private Timestamp createdOn;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     private Timestamp updatedOn;
-    public String getStatus() {
-        return this.status.getName();
-    }
 }

@@ -10,7 +10,4 @@ public class TaskAddEditResponseDTO {
     private String description;
     private String assignees;
     private Status status;
-    public String getStatus() {
-        return this.status.getName();
-    }
 }
