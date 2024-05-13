@@ -58,7 +58,7 @@ public class TaskService {
         Status status = statusRepository.findByName(statusName).orElse(null);
 
         if (status == null) {
-            status = statusRepository.findByName("NO_STATUS").orElse(null);
+            status = statusRepository.findByName(Utils.NO_STATUS).orElse(null);
         }
         Task task = new Task();
         task.setTitle(Utils.trimString(taskDTO.getTitle()));

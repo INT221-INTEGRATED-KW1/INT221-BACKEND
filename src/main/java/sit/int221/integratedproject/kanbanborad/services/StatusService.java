@@ -28,8 +28,6 @@ public class StatusService {
     private StatusRepository statusRepository;
     @Autowired
     private ModelMapper modelMapper;
-    @Autowired
-    private ListMapper listMapper;
 
     public List<StatusResponseDetailDTO> findAllStatus() {
         List<Status> statuses = statusRepository.findAll();
@@ -77,8 +75,8 @@ public class StatusService {
     public StatusResponseDTO updateStatus(Integer id, StatusRequestDTO statusDTO) {
         Status existingStatus = statusRepository.findById(id)
                         .orElseThrow(() -> new ItemNotFoundException("Status Id " + id + " DOES NOT EXIST !!!"));
-        if (existingStatus.getName().equals("NO_STATUS")) {
-            throw new GeneralException("Cannot edit 'NO_STATUS' status.");
+        if (existingStatus.getName().equals(Utils.NO_STATUS)) {
+            throw new GeneralException("Cannot edit 'No Status' status.");
         }
 
         existingStatus.setName(Utils.trimString(statusDTO.getName()));
@@ -96,8 +94,8 @@ public class StatusService {
         if (!statusToDelete.getTasks().isEmpty()) {
             throw new GeneralException("Cannot delete status because it has associated tasks.");
         }
-        if (statusToDelete.getName().equals("NO_STATUS")) {
-            throw new GeneralException("Cannot delete 'NO_STATUS' status.");
+        if (statusToDelete.getName().equals(Utils.NO_STATUS)) {
+            throw new GeneralException("Cannot delete 'No Status' status.");
         }
         statusRepository.deleteById(id);
         return modelMapper.map(statusToDelete, StatusResponseDTO.class);
@@ -109,8 +107,8 @@ public class StatusService {
                 .orElseThrow(() -> new ItemNotFoundException("Status Id " + id + " DOES NOT EXIST !!!"));
         Status transferStatus = statusRepository.findById(newId)
                 .orElseThrow(() -> new ItemNotFoundException("Status Id " + newId + " DOES NOT EXIST !!!"));
-        if (statusToDelete.getName().equals("NO_STATUS")) {
-            throw new GeneralException("Cannot delete 'NO_STATUS' status.");
+        if (statusToDelete.getName().equals(Utils.NO_STATUS)) {
+            throw new GeneralException("Cannot delete 'No Status' status.");
         }
         List<Task> tasks = taskRepository.findByStatusId(id);
         tasks.forEach(task -> task.setStatus(transferStatus));
