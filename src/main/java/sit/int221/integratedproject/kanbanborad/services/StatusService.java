@@ -3,14 +3,16 @@ package sit.int221.integratedproject.kanbanborad.services;
 import jakarta.transaction.Transactional;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import sit.int221.integratedproject.kanbanborad.dtos.request.StatusRequestDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.response.StatusLimitResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusResponseDetailDTO;
 import sit.int221.integratedproject.kanbanborad.entities.Status;
 import sit.int221.integratedproject.kanbanborad.entities.Task;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
-import sit.int221.integratedproject.kanbanborad.exceptions.GeneralException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.StatusRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.TaskRepository;
@@ -36,7 +38,7 @@ public class StatusService {
             statusResponseDTO.setName(Utils.trimString(status.getName()));
             statusResponseDTO.setDescription(Utils.trimString(status.getDescription()));
             statusResponseDTO.setColor(Utils.trimString(status.getColor()));
-            statusResponseDTO.setCountTask(status.getTasks().size());
+            statusResponseDTO.setNoOfTasks(status.getTasks().size());
             statusResponseDTOs.add(statusResponseDTO);
         }
         return statusResponseDTOs;
@@ -57,11 +59,7 @@ public class StatusService {
     @Transactional
     public StatusResponseDTO createNewStatus(StatusRequestDTO statusDTO) {
         Status status = new Status();
-        status.setName(Utils.trimString(statusDTO.getName()));
-        status.setDescription(Utils.checkAndSetDefaultNull(statusDTO.getDescription()));
-        status.setColor(Utils.trimString(statusDTO.getColor()));
-        Status savedStatus = statusRepository.save(status);
-        return modelMapper.map(savedStatus, StatusResponseDTO.class);
+        return getStatusResponseDTO(statusDTO, status);
     }
 
     @Transactional
@@ -75,12 +73,48 @@ public class StatusService {
             throw new BadRequestException("Cannot edit 'Done' status.");
         }
 
+        return getStatusResponseDTO(statusDTO, existingStatus);
+    }
+
+    private StatusResponseDTO getStatusResponseDTO(StatusRequestDTO statusDTO, Status existingStatus) {
         existingStatus.setName(Utils.trimString(statusDTO.getName()));
         existingStatus.setDescription(Utils.checkAndSetDefaultNull(statusDTO.getDescription()));
+        existingStatus.setLimitMaximumTask(Utils.DEFAULT_LIMIT);
         existingStatus.setColor(Utils.trimString(statusDTO.getColor()));
 
         Status updatedStatus = statusRepository.save(existingStatus);
         return modelMapper.map(updatedStatus, StatusResponseDTO.class);
+    }
+
+    @Transactional
+    public StatusLimitResponseDTO updateStatusLimit(Integer id, StatusRequestDTO statusDTO) {
+        Status existingStatus = statusRepository.findById(id)
+                .orElseThrow(() -> new ItemNotFoundException("Status Id " + id + " DOES NOT EXIST !!!"));
+        if (existingStatus.getName().equals(Utils.NO_STATUS)) {
+            throw new BadRequestException("Cannot enable/disable 'No Status' status.");
+        }
+        if (existingStatus.getName().equals(Utils.DONE)) {
+            throw new BadRequestException("Cannot enable/disable 'Done' status.");
+        }
+        int noOfTasks = existingStatus.getTasks().size();
+
+        if (statusDTO.getLimitMaximumTask()) {
+            existingStatus.setLimitMaximumTask(noOfTasks <= Utils.MAX_SIZE);
+        }
+
+        Status updatedStatus = statusRepository.save(existingStatus);
+
+        StatusLimitResponseDTO responseDTO = new StatusLimitResponseDTO();
+        responseDTO.setId(updatedStatus.getId());
+        responseDTO.setName(updatedStatus.getName());
+        responseDTO.setLimitMaximumTask(updatedStatus.getLimitMaximumTask());
+        responseDTO.setNoOfTasks(noOfTasks);
+
+        if (noOfTasks > 10) {
+            responseDTO.setTasks(updatedStatus.getTasks());
+        }
+
+        return responseDTO;
     }
 
     @Transactional
@@ -113,6 +147,13 @@ public class StatusService {
             throw new BadRequestException("Cannot delete 'Done' status.");
         }
         List<Task> tasks = taskRepository.findByStatusId(id);
+        if (tasks.isEmpty()) {
+            throw new BadRequestException("Cannot transfer status because there are no tasks to transfer.");
+        }
+        int totalTasksAfterTransfer = transferStatus.getTasks().size() + tasks.size();
+        if (totalTasksAfterTransfer > Utils.MAX_SIZE) {
+            throw new BadRequestException("Can not transfer status will exceed the limit");
+        }
         tasks.forEach(task -> task.setStatus(transferStatus));
         taskRepository.saveAll(tasks);
 

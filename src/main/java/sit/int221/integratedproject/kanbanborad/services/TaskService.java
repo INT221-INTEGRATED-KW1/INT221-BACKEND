@@ -20,6 +20,7 @@ import sit.int221.integratedproject.kanbanborad.repositories.TaskRepository;
 import sit.int221.integratedproject.kanbanborad.utils.ListMapper;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -45,6 +46,12 @@ public class TaskService {
     }
 
     public List<TaskResponseDTO> findAllTaskSorted(String sortBy) {
+        List<String> fields = new ArrayList<>(Arrays.asList("status.name", "status.id", "id", "title", "assignees"));
+        for (String field : fields) {
+            if (!sortBy.equals(field)) {
+                throw new BadRequestException("can not sort field don't have exists");
+            }
+        }
         List<Task> tasks = taskRepository.findAll(Sort.by(sortBy));
         for (Task task : tasks) {
             task.setTitle(Utils.trimString(task.getTitle()));
@@ -65,6 +72,12 @@ public class TaskService {
     }
 
     public List<TaskResponseDTO> findAllTaskSortedAndFiltered(String sortBy, String[] filterStatuses) {
+        List<String> fields = new ArrayList<>(Arrays.asList("status.name", "status.id", "id", "title", "assignees"));
+        for (String field : fields) {
+            if (!sortBy.equals(field)) {
+                throw new BadRequestException("can not sort field don't have exists");
+            }
+        }
         List<Status> statuses = statusRepository.findByNameIn(Arrays.asList(filterStatuses));
         List<Integer> statusIds = statuses.stream().map(Status::getId).collect(Collectors.toList());
         List<Task> tasks = taskRepository.findByStatusIdIn(statusIds, Sort.by(sortBy));
@@ -91,9 +104,11 @@ public class TaskService {
 
         if (status == null) {
             throw new ItemNotFoundException("Can not add New Task with not existing status id");
-        } else {
+        }
+        if (status.getName() == null) {
             status = statusRepository.findByName(Utils.NO_STATUS).orElse(null);
         }
+
         Task task = new Task();
         task.setTitle(Utils.trimString(taskDTO.getTitle()));
         task.setDescription(Utils.checkAndSetDefaultNull(taskDTO.getDescription()));
@@ -116,8 +131,9 @@ public class TaskService {
 
         Status status = statusRepository.findById(statusId).orElse(null);
         if (status == null) {
-            throw new ItemNotFoundException("Can not add New Task with not existing status id");
-        } else {
+            throw new ItemNotFoundException("Can not edit New Task with not existing status id");
+        }
+        if (status.getName() == null) {
             status = statusRepository.findByName(Utils.NO_STATUS).orElse(null);
         }
         existingTask.setStatus(status);

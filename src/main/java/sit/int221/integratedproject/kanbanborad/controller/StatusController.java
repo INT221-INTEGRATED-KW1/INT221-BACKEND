@@ -40,6 +40,12 @@ public class StatusController {
         return ResponseEntity.status(HttpStatus.OK).body(statusService.updateStatus(id, statusDTO));
     }
 
+    @PatchMapping("/{id}/maximum-task")
+    public ResponseEntity<StatusLimitResponseDTO> updateStatusLimit(@PathVariable Integer id, @RequestBody @Valid StatusRequestDTO limitDTO) {
+        return ResponseEntity.status(HttpStatus.OK).body(statusService.updateStatusLimit(id, limitDTO));
+    }
+
+
     @DeleteMapping("/{id}")
     public ResponseEntity<StatusResponseDTO> removeStatus(@PathVariable Integer id) {
         return ResponseEntity.status(HttpStatus.OK).body(statusService.deleteStatus(id));

@@ -13,6 +13,7 @@ public class StatusRequestDTO {
     private String name;
     @Size(min = 1, max = 200)
     private String description;
+    private Boolean limitMaximumTask = false;
     @Size(min = 1, max = 20)
     private String color;
 }

@@ -11,7 +11,6 @@ import sit.int221.integratedproject.kanbanborad.dtos.response.TaskDetailResponse
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
 import sit.int221.integratedproject.kanbanborad.services.TaskService;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
