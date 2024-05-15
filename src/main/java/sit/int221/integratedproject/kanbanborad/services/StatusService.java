@@ -60,12 +60,6 @@ public class StatusService {
         status.setName(Utils.trimString(statusDTO.getName()));
         status.setDescription(Utils.checkAndSetDefaultNull(statusDTO.getDescription()));
         status.setColor(Utils.trimString(statusDTO.getColor()));
-        List<Status> statuses = statusRepository.findAll();
-        boolean isDuplicateName = statuses.stream().anyMatch(s -> s.getName().equals(status.getName()));
-        if (isDuplicateName) {
-            throw new BadRequestException("Status with name '" + status.getName() + "' already exists.");
-        }
-
         Status savedStatus = statusRepository.save(status);
         return modelMapper.map(savedStatus, StatusResponseDTO.class);
     }
@@ -75,7 +69,10 @@ public class StatusService {
         Status existingStatus = statusRepository.findById(id)
                         .orElseThrow(() -> new ItemNotFoundException("Status Id " + id + " DOES NOT EXIST !!!"));
         if (existingStatus.getName().equals(Utils.NO_STATUS)) {
-            throw new GeneralException("Cannot edit 'No Status' status.");
+            throw new BadRequestException("Cannot edit 'No Status' status.");
+        }
+        if (existingStatus.getName().equals(Utils.DONE)) {
+            throw new BadRequestException("Cannot edit 'Done' status.");
         }
 
         existingStatus.setName(Utils.trimString(statusDTO.getName()));
@@ -91,10 +88,13 @@ public class StatusService {
         Status statusToDelete = statusRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Status Id " + id + " DOES NOT EXIST !!!"));
         if (!statusToDelete.getTasks().isEmpty()) {
-            throw new GeneralException("Cannot delete status because it has associated tasks.");
+            throw new BadRequestException("Cannot delete status because it has associated tasks.");
         }
         if (statusToDelete.getName().equals(Utils.NO_STATUS)) {
-            throw new GeneralException("Cannot delete 'No Status' status.");
+            throw new BadRequestException("Cannot delete 'No Status' status.");
+        }
+        if (statusToDelete.getName().equals(Utils.DONE)) {
+            throw new BadRequestException("Cannot delete 'Done' status.");
         }
         statusRepository.deleteById(id);
         return modelMapper.map(statusToDelete, StatusResponseDTO.class);
@@ -107,7 +107,10 @@ public class StatusService {
         Status transferStatus = statusRepository.findById(newId)
                 .orElseThrow(() -> new ItemNotFoundException("Status Id " + newId + " DOES NOT EXIST !!!"));
         if (statusToDelete.getName().equals(Utils.NO_STATUS)) {
-            throw new GeneralException("Cannot delete 'No Status' status.");
+            throw new BadRequestException("Cannot delete 'No Status' status.");
+        }
+        if (statusToDelete.getName().equals(Utils.DONE)) {
+            throw new BadRequestException("Cannot delete 'Done' status.");
         }
         List<Task> tasks = taskRepository.findByStatusId(id);
         tasks.forEach(task -> task.setStatus(transferStatus));

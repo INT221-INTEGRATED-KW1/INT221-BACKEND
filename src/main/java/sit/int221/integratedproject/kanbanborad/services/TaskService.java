@@ -4,7 +4,9 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolationException;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.w3c.dom.ls.LSException;
 import sit.int221.integratedproject.kanbanborad.dtos.request.TaskRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskAddEditResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskDetailResponseDTO;
@@ -18,7 +20,9 @@ import sit.int221.integratedproject.kanbanborad.repositories.TaskRepository;
 import sit.int221.integratedproject.kanbanborad.utils.ListMapper;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class TaskService {
@@ -40,6 +44,37 @@ public class TaskService {
         return listMapper.mapList(tasks, TaskResponseDTO.class);
     }
 
+    public List<TaskResponseDTO> findAllTaskSorted(String sortBy) {
+        List<Task> tasks = taskRepository.findAll(Sort.by(sortBy));
+        for (Task task : tasks) {
+            task.setTitle(Utils.trimString(task.getTitle()));
+            task.setAssignees(Utils.trimString(task.getAssignees()));
+        }
+        return listMapper.mapList(tasks, TaskResponseDTO.class);
+    }
+
+    public List<TaskResponseDTO> findAllTaskFiltered(String[] filterStatuses) {
+        List<Status> statuses = statusRepository.findByNameIn(Arrays.asList(filterStatuses));
+        List<Integer> statusIds = statuses.stream().map(Status::getId).collect(Collectors.toList());
+        List<Task> tasks = taskRepository.findByStatusIdIn(statusIds);
+        for (Task task : tasks) {
+            task.setTitle(Utils.trimString(task.getTitle()));
+            task.setAssignees(Utils.trimString(task.getAssignees()));
+        }
+        return listMapper.mapList(tasks, TaskResponseDTO.class);
+    }
+
+    public List<TaskResponseDTO> findAllTaskSortedAndFiltered(String sortBy, String[] filterStatuses) {
+        List<Status> statuses = statusRepository.findByNameIn(Arrays.asList(filterStatuses));
+        List<Integer> statusIds = statuses.stream().map(Status::getId).collect(Collectors.toList());
+        List<Task> tasks = taskRepository.findByStatusIdIn(statusIds, Sort.by(sortBy));
+        for (Task task : tasks) {
+            task.setTitle(Utils.trimString(task.getTitle()));
+            task.setAssignees(Utils.trimString(task.getAssignees()));
+        }
+        return listMapper.mapList(tasks, TaskResponseDTO.class);
+    }
+
     public TaskDetailResponseDTO findTaskById(Integer id) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!"));
@@ -51,16 +86,12 @@ public class TaskService {
 
     @Transactional
     public TaskAddEditResponseDTO createNewTask(TaskRequestDTO taskDTO) {
-        if (taskDTO.getTitle() == null) {
-            throw new BadRequestException("title can not be null");
-        }
         Integer statusId = taskDTO.getStatus();
         Status status = statusRepository.findById(statusId).orElse(null);
 
         if (status == null) {
             throw new ItemNotFoundException("Can not add New Task with not existing status id");
-        }
-        if (status.getName() == null) {
+        } else {
             status = statusRepository.findByName(Utils.NO_STATUS).orElse(null);
         }
         Task task = new Task();
@@ -86,8 +117,7 @@ public class TaskService {
         Status status = statusRepository.findById(statusId).orElse(null);
         if (status == null) {
             throw new ItemNotFoundException("Can not add New Task with not existing status id");
-        }
-        if (status.getName() == null) {
+        } else {
             status = statusRepository.findByName(Utils.NO_STATUS).orElse(null);
         }
         existingTask.setStatus(status);
