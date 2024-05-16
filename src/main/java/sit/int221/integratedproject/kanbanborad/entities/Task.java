@@ -23,7 +23,6 @@ public class Task {
     @NotBlank
     private String title;
     @Size(min = 1, max = 500)
-    @NotBlank
     private String description;
     @Size(min = 1, max = 30)
     @NotBlank

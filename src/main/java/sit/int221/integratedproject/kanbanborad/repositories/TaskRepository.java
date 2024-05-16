@@ -9,6 +9,6 @@ import java.util.Optional;
 
 public interface TaskRepository extends JpaRepository<Task, Integer> {
     List<Task> findByStatusId(Integer id);
-    List<Task> findByStatusIdIn(List<Integer> statusIds);
-    List<Task> findByStatusIdIn(List<Integer> statusIds, Sort sort);
+    List<Task> findByStatusNameIn(List<String> statusNames);
+    List<Task> findByStatusNameIn(List<String> statusNames, Sort sort);
 }

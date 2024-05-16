@@ -48,17 +48,13 @@ public class TaskService {
     }
 
     public List<TaskResponseDTO> findAllTaskFiltered(String[] filterStatuses) {
-        List<Status> statuses = statusRepository.findByNameIn(Arrays.asList(filterStatuses));
-        List<Integer> statusIds = statuses.stream().map(Status::getId).collect(Collectors.toList());
-        List<Task> tasks = taskRepository.findByStatusIdIn(statusIds);
+        List<Task> tasks = taskRepository.findByStatusNameIn(Arrays.asList(filterStatuses));
         return listMapper.mapList(tasks, TaskResponseDTO.class);
     }
 
     public List<TaskResponseDTO> findAllTaskSortedAndFiltered(String sortBy, String[] filterStatuses) {
         validateSortField(sortBy);
-        List<Status> statuses = statusRepository.findByNameIn(Arrays.asList(filterStatuses));
-        List<Integer> statusIds = statuses.stream().map(Status::getId).collect(Collectors.toList());
-        List<Task> tasks = taskRepository.findByStatusIdIn(statusIds, Sort.by(sortBy));
+        List<Task> tasks = taskRepository.findByStatusNameIn(Arrays.asList(filterStatuses), Sort.by(sortBy));
         return listMapper.mapList(tasks, TaskResponseDTO.class);
     }
 
@@ -71,6 +67,9 @@ public class TaskService {
     @Transactional
     public TaskAddEditResponseDTO createNewTask(TaskRequestDTO taskDTO) {
         Status status = findStatusByIdOrThrow(taskDTO.getStatus());
+        if (status.getLimitMaximumTask() && status.getTasks().size() <= Utils.MAX_SIZE) {
+            throw new BadRequestException("Can not add task with status exceed limit");
+        }
         Task task = new Task();
         populateTaskFromDTO(task, taskDTO, status);
         Task savedTask = taskRepository.save(task);
@@ -82,6 +81,9 @@ public class TaskService {
         Task existingTask = taskRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!"));
         Status status = findStatusByIdOrThrow(taskDTO.getStatus());
+        if (status.getLimitMaximumTask() && status.getTasks().size() >= Utils.MAX_SIZE) {
+            throw new BadRequestException("Cannot update task. Status limit exceeded.");
+        }
         populateTaskFromDTO(existingTask, taskDTO, status);
         Task updatedTask = taskRepository.save(existingTask);
         return modelMapper.map(updatedTask, TaskAddEditResponseDTO.class);
