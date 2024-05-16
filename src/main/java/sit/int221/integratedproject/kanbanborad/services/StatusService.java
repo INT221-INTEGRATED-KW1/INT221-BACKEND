@@ -71,12 +71,12 @@ public class StatusService {
         Status existingStatus = findStatusByIdAndValidate(id);
         validateStatusForOperation(existingStatus);
         int noOfTasks = existingStatus.getTasks().size();
-        existingStatus.setLimitMaximumTask(statusDTO.getLimitMaximumTask());
+        existingStatus.setLimitMaximumTask(noOfTasks <= Utils.MAX_SIZE);
         Status updatedStatus = statusRepository.save(existingStatus);
         StatusLimitResponseDTO responseDTO = new StatusLimitResponseDTO();
         responseDTO.setId(updatedStatus.getId());
         responseDTO.setName(updatedStatus.getName());
-        responseDTO.setLimitMaximumTask(noOfTasks <= Utils.MAX_SIZE);
+        responseDTO.setLimitMaximumTask(updatedStatus.getLimitMaximumTask());
         responseDTO.setNoOfTasks(noOfTasks);
         if (noOfTasks > Utils.MAX_SIZE) {
             responseDTO.setTasks(updatedStatus.getTasks());
