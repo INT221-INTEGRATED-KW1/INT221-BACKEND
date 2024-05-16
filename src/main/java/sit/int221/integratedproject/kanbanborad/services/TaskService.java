@@ -38,25 +38,12 @@ public class TaskService {
 
     public List<TaskResponseDTO> findAllTask() {
         List<Task> tasks = taskRepository.findAll();
-        for (Task task : tasks) {
-            task.setTitle(Utils.trimString(task.getTitle()));
-            task.setAssignees(Utils.trimString(task.getAssignees()));
-        }
         return listMapper.mapList(tasks, TaskResponseDTO.class);
     }
 
     public List<TaskResponseDTO> findAllTaskSorted(String sortBy) {
-        List<String> fields = new ArrayList<>(Arrays.asList("status.name", "status.id", "id", "title", "assignees"));
-        for (String field : fields) {
-            if (!sortBy.equals(field)) {
-                throw new BadRequestException("can not sort field don't have exists");
-            }
-        }
+        validateSortField(sortBy);
         List<Task> tasks = taskRepository.findAll(Sort.by(sortBy));
-        for (Task task : tasks) {
-            task.setTitle(Utils.trimString(task.getTitle()));
-            task.setAssignees(Utils.trimString(task.getAssignees()));
-        }
         return listMapper.mapList(tasks, TaskResponseDTO.class);
     }
 
@@ -64,82 +51,39 @@ public class TaskService {
         List<Status> statuses = statusRepository.findByNameIn(Arrays.asList(filterStatuses));
         List<Integer> statusIds = statuses.stream().map(Status::getId).collect(Collectors.toList());
         List<Task> tasks = taskRepository.findByStatusIdIn(statusIds);
-        for (Task task : tasks) {
-            task.setTitle(Utils.trimString(task.getTitle()));
-            task.setAssignees(Utils.trimString(task.getAssignees()));
-        }
         return listMapper.mapList(tasks, TaskResponseDTO.class);
     }
 
     public List<TaskResponseDTO> findAllTaskSortedAndFiltered(String sortBy, String[] filterStatuses) {
-        List<String> fields = new ArrayList<>(Arrays.asList("status.name", "status.id", "id", "title", "assignees"));
-        for (String field : fields) {
-            if (!sortBy.equals(field)) {
-                throw new BadRequestException("can not sort field don't have exists");
-            }
-        }
+        validateSortField(sortBy);
         List<Status> statuses = statusRepository.findByNameIn(Arrays.asList(filterStatuses));
         List<Integer> statusIds = statuses.stream().map(Status::getId).collect(Collectors.toList());
         List<Task> tasks = taskRepository.findByStatusIdIn(statusIds, Sort.by(sortBy));
-        for (Task task : tasks) {
-            task.setTitle(Utils.trimString(task.getTitle()));
-            task.setAssignees(Utils.trimString(task.getAssignees()));
-        }
         return listMapper.mapList(tasks, TaskResponseDTO.class);
     }
 
     public TaskDetailResponseDTO findTaskById(Integer id) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!"));
-        task.setTitle(Utils.trimString(task.getTitle()));
-        task.setDescription(Utils.trimString(task.getDescription()));
-        task.setAssignees(Utils.trimString(task.getAssignees()));
         return modelMapper.map(task, TaskDetailResponseDTO.class);
     }
 
     @Transactional
     public TaskAddEditResponseDTO createNewTask(TaskRequestDTO taskDTO) {
-        Integer statusId = taskDTO.getStatus();
-        Status status = statusRepository.findById(statusId).orElse(null);
-
-        if (status == null) {
-            throw new ItemNotFoundException("Can not add New Task with not existing status id");
-        }
-        if (status.getName() == null) {
-            status = statusRepository.findByName(Utils.NO_STATUS).orElse(null);
-        }
-
+        Status status = findStatusByIdOrThrow(taskDTO.getStatus());
         Task task = new Task();
-        task.setTitle(Utils.trimString(taskDTO.getTitle()));
-        task.setDescription(Utils.checkAndSetDefaultNull(taskDTO.getDescription()));
-        task.setAssignees(Utils.checkAndSetDefaultNull(taskDTO.getAssignees()));
-        task.setStatus(status);
-
+        populateTaskFromDTO(task, taskDTO, status);
         Task savedTask = taskRepository.save(task);
         return modelMapper.map(savedTask, TaskAddEditResponseDTO.class);
     }
 
     @Transactional
     public TaskAddEditResponseDTO updateTask(Integer id, TaskRequestDTO taskDTO) {
-        Integer statusId = taskDTO.getStatus();
         Task existingTask = taskRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!"));
-
-        existingTask.setTitle(Utils.trimString(taskDTO.getTitle()));
-        existingTask.setDescription(Utils.checkAndSetDefaultNull(taskDTO.getDescription()));
-        existingTask.setAssignees(Utils.checkAndSetDefaultNull(taskDTO.getAssignees()));
-
-        Status status = statusRepository.findById(statusId).orElse(null);
-        if (status == null) {
-            throw new ItemNotFoundException("Can not edit New Task with not existing status id");
-        }
-        if (status.getName() == null) {
-            status = statusRepository.findByName(Utils.NO_STATUS).orElse(null);
-        }
-        existingTask.setStatus(status);
-
+        Status status = findStatusByIdOrThrow(taskDTO.getStatus());
+        populateTaskFromDTO(existingTask, taskDTO, status);
         Task updatedTask = taskRepository.save(existingTask);
-
         return modelMapper.map(updatedTask, TaskAddEditResponseDTO.class);
     }
 
@@ -147,9 +91,27 @@ public class TaskService {
     public TaskResponseDTO deleteTask(Integer id) {
         Task taskToDelete = taskRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!"));
-
         taskRepository.deleteById(id);
         return modelMapper.map(taskToDelete, TaskResponseDTO.class);
+    }
+
+    private void validateSortField(String sortBy) {
+        List<String> validFields = Arrays.asList("status.name", "status.id", "id", "title", "assignees");
+        if (!validFields.contains(sortBy)) {
+            throw new BadRequestException("Cannot sort by a field that does not exist");
+        }
+    }
+
+    private Status findStatusByIdOrThrow(Integer statusId) {
+        return statusRepository.findById(statusId)
+                .orElseThrow(() -> new ItemNotFoundException("Can not add or update New Task with non-existing status id"));
+    }
+
+    private void populateTaskFromDTO(Task task, TaskRequestDTO taskDTO, Status status) {
+        task.setTitle(Utils.trimString(taskDTO.getTitle()));
+        task.setDescription(Utils.checkAndSetDefaultNull(taskDTO.getDescription()));
+        task.setAssignees(Utils.checkAndSetDefaultNull(taskDTO.getAssignees()));
+        task.setStatus(status);
     }
 
 }

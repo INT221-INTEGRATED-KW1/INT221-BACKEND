@@ -1,6 +1,7 @@
 package sit.int221.integratedproject.kanbanborad.exceptions;
 
 import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,6 +39,16 @@ public class GlobalExceptionHandling {
             DataIntegrityViolationException exception, WebRequest request){
         String message = exception.getMessage().substring(0,exception.getMessage().indexOf(']')+1);
         return buildErrorResponse(exception, message, HttpStatus.BAD_REQUEST,request);
+    }
+    @ExceptionHandler(ConstraintViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ResponseEntity<Object> handleConstraintViolationException(
+            ConstraintViolationException ex, WebRequest request) {
+        ErrorResponse validationErrorResponse = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), "Validation error. Check 'errors' field for details.", request.getDescription(false));
+        for (ConstraintViolation<?> violation : ex.getConstraintViolations()) {
+            validationErrorResponse.addValidationError(violation.getPropertyPath().toString(), violation.getMessage());
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(validationErrorResponse);
     }
     @ExceptionHandler(ItemNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
