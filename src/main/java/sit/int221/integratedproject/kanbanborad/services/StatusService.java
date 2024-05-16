@@ -8,14 +8,12 @@ import sit.int221.integratedproject.kanbanborad.dtos.request.StatusRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusLimitResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusResponseDetailDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.Status;
 import sit.int221.integratedproject.kanbanborad.entities.Task;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.StatusRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.TaskRepository;
-import sit.int221.integratedproject.kanbanborad.utils.ListMapper;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
 import java.util.ArrayList;
@@ -108,7 +106,7 @@ public class StatusService {
         }
         int totalTasksAfterTransfer = transferStatus.getTasks().size() + tasks.size();
         boolean isTransferStatusSpecial = transferStatus.getName().equals(Utils.NO_STATUS) || transferStatus.getName().equals(Utils.DONE);
-        if (totalTasksAfterTransfer > Utils.MAX_SIZE && !isTransferStatusSpecial) {
+        if (totalTasksAfterTransfer > Utils.MAX_SIZE && !isTransferStatusSpecial && transferStatus.getLimitMaximumTask()) {
             throw new BadRequestException("Can not transfer status will exceed the limit");
         }
         tasks.forEach(task -> task.setStatus(transferStatus));
