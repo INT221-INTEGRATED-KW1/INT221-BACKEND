@@ -67,7 +67,7 @@ public class TaskService {
     @Transactional
     public TaskAddEditResponseDTO createNewTask(TaskRequestDTO taskDTO) {
         Status status = findStatusByIdOrThrow(taskDTO.getStatus());
-        if (status.getLimitMaximumTask() && status.getTasks().size() <= Utils.MAX_SIZE) {
+        if (status.getLimitMaximumTask() && status.getTasks().size() >= Utils.MAX_SIZE) {
             throw new BadRequestException("Can not add task with status exceed limit");
         }
         Task task = new Task();
