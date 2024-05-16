@@ -47,27 +47,27 @@ public class StatusService {
     @Transactional
     public StatusResponseDTO createNewStatus(StatusRequestDTO statusDTO) {
         Status status = new Status();
-        status.setName(Utils.trimString(statusDTO.getName()));
-        status.setDescription(Utils.checkAndSetDefaultNull(statusDTO.getDescription()));
-        status.setColor(Utils.trimString(statusDTO.getColor()));
-        status.setLimitMaximumTask(Utils.DEFAULT_LIMIT);
-        Status savedStatus = statusRepository.save(status);
-        return modelMapper.map(savedStatus, StatusResponseDTO.class);
+        return getStatusResponseDTO(statusDTO, status);
     }
 
     @Transactional
     public StatusResponseDTO updateStatus(Integer id, StatusRequestDTO statusDTO) {
         Status existingStatus = findStatusByIdAndValidate(id);
         validateStatusForOperation(existingStatus);
+        return getStatusResponseDTO(statusDTO, existingStatus);
+    }
+
+    private StatusResponseDTO getStatusResponseDTO(StatusRequestDTO statusDTO, Status existingStatus) {
         existingStatus.setName(Utils.trimString(statusDTO.getName()));
         existingStatus.setDescription(Utils.checkAndSetDefaultNull(statusDTO.getDescription()));
         existingStatus.setColor(Utils.trimString(statusDTO.getColor()));
+        existingStatus.setLimitMaximumTask(statusDTO.getLimitMaximumTask());
         Status updatedStatus = statusRepository.save(existingStatus);
         return modelMapper.map(updatedStatus, StatusResponseDTO.class);
     }
 
     @Transactional
-    public StatusLimitResponseDTO updateStatusLimit(Integer id, StatusRequestDTO statusDTO) {
+    public StatusLimitResponseDTO updateStatusLimit(Integer id, StatusRequestDTO limitDTO) {
         Status existingStatus = findStatusByIdAndValidate(id);
         validateStatusForOperation(existingStatus);
         int noOfTasks = existingStatus.getTasks().size();
