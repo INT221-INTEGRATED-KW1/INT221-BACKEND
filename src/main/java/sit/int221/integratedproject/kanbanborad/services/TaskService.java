@@ -67,7 +67,8 @@ public class TaskService {
     @Transactional
     public TaskAddEditResponseDTO createNewTask(TaskRequestDTO taskDTO) {
         Status status = findStatusByIdOrThrow(taskDTO.getStatus());
-        if (status.getLimitMaximumTask() && status.getTasks().size() >= Utils.MAX_SIZE) {
+        boolean isTransferStatusSpecial = status.getName().equals(Utils.NO_STATUS) || status.getName().equals(Utils.DONE);
+        if (status.getBoard().getLimitMaximumTask() && !isTransferStatusSpecial && status.getTasks().size() >= Utils.MAX_SIZE) {
             throw new BadRequestException("Can not add task with status exceed limit");
         }
         Task task = new Task();
@@ -81,7 +82,8 @@ public class TaskService {
         Task existingTask = taskRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!"));
         Status status = findStatusByIdOrThrow(taskDTO.getStatus());
-        if (status.getLimitMaximumTask() && status.getTasks().size() >= Utils.MAX_SIZE) {
+        boolean isTransferStatusSpecial = status.getName().equals(Utils.NO_STATUS) || status.getName().equals(Utils.DONE);
+        if (status.getBoard().getLimitMaximumTask() && !isTransferStatusSpecial && status.getTasks().size() >= Utils.MAX_SIZE) {
             throw new BadRequestException("Cannot update task. Status limit exceeded.");
         }
         populateTaskFromDTO(existingTask, taskDTO, status);

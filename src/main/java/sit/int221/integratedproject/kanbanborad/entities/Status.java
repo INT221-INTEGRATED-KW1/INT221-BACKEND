@@ -6,7 +6,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -31,9 +30,11 @@ public class Status {
     @Size(min = 1, max = 200)
     @NotBlank
     private String description;
-    private Boolean limitMaximumTask;
     @Size(min = 1, max = 20)
     private String color;
+    @ManyToOne
+    @JoinColumn(name = "board_id")
+    private Board board;
     @JsonIgnore
     @OneToMany(mappedBy = "status")
     private List<Task> tasks = new ArrayList<>();

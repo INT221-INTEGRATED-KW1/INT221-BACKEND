@@ -4,14 +4,17 @@ import jakarta.transaction.Transactional;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import sit.int221.integratedproject.kanbanborad.dtos.request.BoardRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.request.StatusRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusLimitResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusResponseDetailDTO;
+import sit.int221.integratedproject.kanbanborad.entities.Board;
 import sit.int221.integratedproject.kanbanborad.entities.Status;
 import sit.int221.integratedproject.kanbanborad.entities.Task;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
+import sit.int221.integratedproject.kanbanborad.repositories.BoardRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.StatusRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.TaskRepository;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
@@ -25,6 +28,8 @@ public class StatusService {
     private TaskRepository taskRepository;
     @Autowired
     private StatusRepository statusRepository;
+    @Autowired
+    private BoardRepository boardRepository;
     @Autowired
     private ModelMapper modelMapper;
 
@@ -58,35 +63,37 @@ public class StatusService {
     }
 
     private StatusResponseDTO getStatusResponseDTO(StatusRequestDTO statusDTO, Status existingStatus) {
+        Board board = boardRepository.findById(statusDTO.getBoard())
+                .orElseThrow(() -> new ItemNotFoundException("Can not add or update New Task with non-existing status id"));
         existingStatus.setName(Utils.trimString(statusDTO.getName()));
         existingStatus.setDescription(Utils.checkAndSetDefaultNull(statusDTO.getDescription()));
         existingStatus.setColor(Utils.trimString(statusDTO.getColor()));
-        existingStatus.setLimitMaximumTask(statusDTO.getLimitMaximumTask());
+        existingStatus.setBoard(board);
         Status updatedStatus = statusRepository.save(existingStatus);
         return modelMapper.map(updatedStatus, StatusResponseDTO.class);
     }
 
-    @Transactional
-    public StatusLimitResponseDTO updateStatusLimit(Integer id, StatusRequestDTO limitDTO) {
-        Status existingStatus = findStatusByIdAndValidate(id);
-        validateStatusForOperation(existingStatus);
-        int noOfTasks = existingStatus.getTasks().size();
-        if (limitDTO.getLimitMaximumTask()) {
-            existingStatus.setLimitMaximumTask(noOfTasks <= Utils.MAX_SIZE);
-        } else {
-            existingStatus.setLimitMaximumTask(false);
-        }
-        Status updatedStatus = statusRepository.save(existingStatus);
-        StatusLimitResponseDTO responseDTO = new StatusLimitResponseDTO();
-        responseDTO.setId(updatedStatus.getId());
-        responseDTO.setName(updatedStatus.getName());
-        responseDTO.setLimitMaximumTask(updatedStatus.getLimitMaximumTask());
-        responseDTO.setNoOfTasks(noOfTasks);
-        if (noOfTasks > Utils.MAX_SIZE) {
-            responseDTO.setTasks(updatedStatus.getTasks());
-        }
-        return responseDTO;
-    }
+//    @Transactional
+//    public StatusLimitResponseDTO updateStatusLimit(Integer id, StatusRequestDTO limitDTO) {
+//        Status existingStatus = findStatusByIdAndValidate(id);
+//        validateStatusForOperation(existingStatus);
+//        int noOfTasks = existingStatus.getTasks().size();
+//        if (limitDTO.getLimitMaximumTask()) {
+//            existingStatus.setLimitMaximumTask(noOfTasks <= Utils.MAX_SIZE);
+//        } else {
+//            existingStatus.setLimitMaximumTask(false);
+//        }
+//        Status updatedStatus = statusRepository.save(existingStatus);
+//        StatusLimitResponseDTO responseDTO = new StatusLimitResponseDTO();
+//        responseDTO.setId(updatedStatus.getId());
+//        responseDTO.setName(updatedStatus.getName());
+//        responseDTO.setLimitMaximumTask(updatedStatus.getLimitMaximumTask());
+//        responseDTO.setNoOfTasks(noOfTasks);
+//        if (noOfTasks > Utils.MAX_SIZE) {
+//            responseDTO.setTasks(updatedStatus.getTasks());
+//        }
+//        return responseDTO;
+//    }
 
     @Transactional
     public StatusResponseDTO deleteStatus(Integer id) {
@@ -110,7 +117,9 @@ public class StatusService {
         }
         int totalTasksAfterTransfer = transferStatus.getTasks().size() + tasks.size();
         boolean isTransferStatusSpecial = transferStatus.getName().equals(Utils.NO_STATUS) || transferStatus.getName().equals(Utils.DONE);
-        if (totalTasksAfterTransfer > Utils.MAX_SIZE && !isTransferStatusSpecial && transferStatus.getLimitMaximumTask()) {
+        System.out.println(isTransferStatusSpecial);
+        System.out.println(transferStatus.getBoard().getLimitMaximumTask());
+        if (totalTasksAfterTransfer > Utils.MAX_SIZE && !isTransferStatusSpecial && transferStatus.getBoard().getLimitMaximumTask()) {
             throw new BadRequestException("Can not transfer status will exceed the limit");
         }
         tasks.forEach(task -> task.setStatus(transferStatus));

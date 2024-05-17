@@ -16,7 +16,8 @@ public class StatusRequestDTO {
     @Size(min = 1, max = 200)
     @NotBlank
     private String description;
-    private Boolean limitMaximumTask;
+    @NotNull(message = "Status can not be null")
+    private Integer board;
     @Size(min = 1, max = 20)
     private String color;
 }
