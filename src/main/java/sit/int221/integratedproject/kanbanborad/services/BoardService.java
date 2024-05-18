@@ -17,6 +17,7 @@ import sit.int221.integratedproject.kanbanborad.repositories.BoardRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.StatusRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.TaskRepository;
 import sit.int221.integratedproject.kanbanborad.utils.ListMapper;
+import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,9 +50,25 @@ public class BoardService {
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
         existingBoard.setLimitMaximumStatus(boardDTO.getLimitMaximumStatus());
         Board updatedBoard = boardRepository.save(existingBoard);
+
         StatusLimitResponseDTO responseDTO = new StatusLimitResponseDTO();
         responseDTO.setId(updatedBoard.getId());
         responseDTO.setLimitMaximumStatus(updatedBoard.getLimitMaximumStatus());
+
+        if (updatedBoard.getLimitMaximumStatus()) {
+            List<StatusResponseDetailDTO> statusResponseDTOs = new ArrayList<>();
+            for (Status status : updatedBoard.getStatuses()) {
+                if (status.getTasks().size() > Utils.MAX_SIZE) {
+                    StatusResponseDetailDTO statusResponseDTO = modelMapper.map(status, StatusResponseDetailDTO.class);
+                    statusResponseDTO.setNoOfTasks(status.getTasks().size());
+                    statusResponseDTOs.add(statusResponseDTO);
+                }
+            }
+            responseDTO.setStatuses(statusResponseDTOs);
+        }
+
         return responseDTO;
     }
+
+
 }
