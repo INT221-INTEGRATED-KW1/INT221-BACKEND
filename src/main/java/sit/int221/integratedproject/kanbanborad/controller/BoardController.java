@@ -15,7 +15,7 @@ import sit.int221.integratedproject.kanbanborad.services.StatusService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/v2/boards")
+@RequestMapping("")
 @CrossOrigin(origins = "http://localhost")
 public class BoardController {
     @Autowired

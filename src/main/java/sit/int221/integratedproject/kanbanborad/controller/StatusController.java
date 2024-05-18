@@ -14,29 +14,28 @@ import sit.int221.integratedproject.kanbanborad.services.StatusService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/v2/statuses")
 @CrossOrigin(origins = "http://localhost")
 public class StatusController {
     @Autowired
     private StatusService statusService;
 
-    @GetMapping("/boards/{boardId}")
+    @GetMapping("/{boardId}/statuses")
     public ResponseEntity<List<StatusResponseDetailDTO>> getAllStatus(@PathVariable Integer boardId) {
         return ResponseEntity.status(HttpStatus.OK).body(statusService.findAllStatus(boardId));
     }
 
-    @GetMapping("{id}/boards/{boardId}")
+    @GetMapping("/{boardId}/statuses/{id}")
     public ResponseEntity<StatusResponseDTO> getTaskById(@PathVariable Integer id, @PathVariable Integer boardId) {
         return ResponseEntity.status(HttpStatus.OK).body(statusService.findStatusById(id, boardId));
     }
 
-    @PostMapping("boards/{boardId}")
+    @PostMapping("/{boardId}/statuses")
     public ResponseEntity<StatusResponseDTO> addNewStatus(@RequestBody @Valid StatusRequestDTO statusDTO,
                                                           @PathVariable Integer boardId) {
         return ResponseEntity.status(HttpStatus.CREATED).body(statusService.createNewStatus(statusDTO, boardId));
     }
 
-    @PutMapping("{id}/boards/{boardId}")
+    @PutMapping("/{boardId}/statuses/{id}")
     public ResponseEntity<StatusResponseDTO> updateStatus(@PathVariable Integer id,
                                                           @RequestBody @Valid StatusRequestDTO statusDTO,
                                                           @PathVariable Integer boardId) {
@@ -49,12 +48,12 @@ public class StatusController {
 //    }
 
 
-    @DeleteMapping("/{id}/boards/{boardId}")
+    @DeleteMapping("/{boardId}/statuses/{id}")
     public ResponseEntity<StatusResponseDTO> removeStatus(@PathVariable Integer id, @PathVariable Integer boardId) {
         return ResponseEntity.status(HttpStatus.OK).body(statusService.deleteStatus(id, boardId));
     }
 
-    @DeleteMapping("/{id}/{newId}/boards/{boardId}")
+    @DeleteMapping("/{boardId}/statuses/{id}/{newId}")
     public ResponseEntity<StatusResponseDTO> removeStatusAndTransferName(@PathVariable Integer id,
                                                                          @PathVariable Integer newId,
                                                                          @PathVariable Integer boardId) {
