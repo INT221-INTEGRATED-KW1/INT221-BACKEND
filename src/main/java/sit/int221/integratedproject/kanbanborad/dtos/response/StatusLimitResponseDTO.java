@@ -9,7 +9,7 @@ import java.util.List;
 @Data
 public class StatusLimitResponseDTO {
     private Integer id;
-    private Boolean limitMaximumTask;
+    private Boolean limitMaximumStatus;
 //    private Integer noOfTasks;
 //    @JsonInclude(JsonInclude.Include.NON_NULL)
 //    private List<Task> tasks;

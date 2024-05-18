@@ -20,25 +20,27 @@ public class StatusController {
     @Autowired
     private StatusService statusService;
 
-    @GetMapping("")
-    public ResponseEntity<List<StatusResponseDetailDTO>> getAllStatus() {
-        return ResponseEntity.status(HttpStatus.OK).body(statusService.findAllStatus());
+    @GetMapping("/boards/{boardId}")
+    public ResponseEntity<List<StatusResponseDetailDTO>> getAllStatus(@PathVariable Integer boardId) {
+        return ResponseEntity.status(HttpStatus.OK).body(statusService.findAllStatus(boardId));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<StatusResponseDTO> getTaskById(@PathVariable Integer id) {
-        return ResponseEntity.status(HttpStatus.OK).body(statusService.findStatusById(id));
+    @GetMapping("{id}/boards/{boardId}")
+    public ResponseEntity<StatusResponseDTO> getTaskById(@PathVariable Integer id, @PathVariable Integer boardId) {
+        return ResponseEntity.status(HttpStatus.OK).body(statusService.findStatusById(id, boardId));
     }
 
-    @PostMapping("")
-    public ResponseEntity<StatusResponseDTO> addNewStatus(@RequestBody @Valid StatusRequestDTO statusDTO) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(statusService.createNewStatus(statusDTO));
+    @PostMapping("boards/{boardId}")
+    public ResponseEntity<StatusResponseDTO> addNewStatus(@RequestBody @Valid StatusRequestDTO statusDTO,
+                                                          @PathVariable Integer boardId) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(statusService.createNewStatus(statusDTO, boardId));
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("{id}/boards/{boardId}")
     public ResponseEntity<StatusResponseDTO> updateStatus(@PathVariable Integer id,
-                                                               @RequestBody @Valid StatusRequestDTO statusDTO) {
-        return ResponseEntity.status(HttpStatus.OK).body(statusService.updateStatus(id, statusDTO));
+                                                          @RequestBody @Valid StatusRequestDTO statusDTO,
+                                                          @PathVariable Integer boardId) {
+        return ResponseEntity.status(HttpStatus.OK).body(statusService.updateStatus(id, statusDTO, boardId));
     }
 
 //    @PatchMapping("/{id}/maximum-task")
@@ -47,18 +49,19 @@ public class StatusController {
 //    }
 
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<StatusResponseDTO> removeStatus(@PathVariable Integer id) {
-        return ResponseEntity.status(HttpStatus.OK).body(statusService.deleteStatus(id));
+    @DeleteMapping("/{id}/boards/{boardId}")
+    public ResponseEntity<StatusResponseDTO> removeStatus(@PathVariable Integer id, @PathVariable Integer boardId) {
+        return ResponseEntity.status(HttpStatus.OK).body(statusService.deleteStatus(id, boardId));
     }
 
-    @DeleteMapping("/{id}/{newId}")
+    @DeleteMapping("/{id}/{newId}/boards/{boardId}")
     public ResponseEntity<StatusResponseDTO> removeStatusAndTransferName(@PathVariable Integer id,
-                                                                         @PathVariable Integer newId) {
+                                                                         @PathVariable Integer newId,
+                                                                         @PathVariable Integer boardId) {
         if (id.equals(newId)) {
             throw new BadRequestException("You can not transfer the same status");
         }
-        return ResponseEntity.status(HttpStatus.OK).body(statusService.deleteTaskAndTransferStatus(id, newId));
+        return ResponseEntity.status(HttpStatus.OK).body(statusService.deleteTaskAndTransferStatus(id, newId, boardId));
     }
 
 }

@@ -31,7 +31,7 @@ public class BoardController {
         return ResponseEntity.status(HttpStatus.OK).body(boardService.findBoardById(id));
     }
 
-    @PatchMapping("/{id}/maximum-task")
+    @PatchMapping("/{id}/maximum-status")
     public ResponseEntity<StatusLimitResponseDTO> updateBoardLimit(@PathVariable Integer id, @RequestBody @Valid BoardRequestDTO boardDTO) {
         return ResponseEntity.status(HttpStatus.OK).body(boardService.updateBoardLimit(id, boardDTO));
     }

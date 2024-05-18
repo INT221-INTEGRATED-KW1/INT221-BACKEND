@@ -31,6 +31,9 @@ public class Task {
     @ManyToOne
     @JoinColumn(name = "status_id")
     private Status status;
+    @ManyToOne
+    @JoinColumn(name = "board_id")
+    private Board board;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     @Column(insertable = false, updatable = false)
     private Timestamp createdOn;

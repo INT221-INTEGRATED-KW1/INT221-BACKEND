@@ -47,11 +47,11 @@ public class BoardService {
     public StatusLimitResponseDTO updateBoardLimit(Integer id, BoardRequestDTO boardDTO) {
         Board existingBoard = boardRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
-        existingBoard.setLimitMaximumTask(boardDTO.getLimitMaximumTask());
+        existingBoard.setLimitMaximumStatus(boardDTO.getLimitMaximumStatus());
         Board updatedBoard = boardRepository.save(existingBoard);
         StatusLimitResponseDTO responseDTO = new StatusLimitResponseDTO();
         responseDTO.setId(updatedBoard.getId());
-        responseDTO.setLimitMaximumTask(updatedBoard.getLimitMaximumTask());
+        responseDTO.setLimitMaximumStatus(updatedBoard.getLimitMaximumStatus());
         return responseDTO;
     }
 }

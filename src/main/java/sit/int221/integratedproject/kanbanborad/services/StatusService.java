@@ -33,8 +33,9 @@ public class StatusService {
     @Autowired
     private ModelMapper modelMapper;
 
-    public List<StatusResponseDetailDTO> findAllStatus() {
-        List<Status> statuses = statusRepository.findAll();
+    public List<StatusResponseDetailDTO> findAllStatus(Integer boardId) {
+        Board board = findBoardByIdAndValidate(boardId);
+        List<Status> statuses = board.getStatuses();
         List<StatusResponseDetailDTO> statusResponseDTOs = new ArrayList<>();
         for (Status status : statuses) {
             StatusResponseDetailDTO statusResponseDTO = modelMapper.map(status, StatusResponseDetailDTO.class);
@@ -44,27 +45,33 @@ public class StatusService {
         return statusResponseDTOs;
     }
 
-    public StatusResponseDTO findStatusById(Integer id) {
-        Status status = findStatusByIdAndValidate(id);
+    public StatusResponseDTO findStatusById(Integer id, Integer boardId) {
+        if (!statusRepository.existsById(id)) {
+            throw new BadRequestException("Status Id " + id + " DOES NOT EXIST !!!");
+        }
+        if (!boardRepository.existsById(boardId)) {
+            throw new BadRequestException("Board Id " + id + " DOES NOT EXIST !!!");
+        }
+        Status status = statusRepository.findStatusByIdAndBoardId(id, boardId);
         return modelMapper.map(status, StatusResponseDTO.class);
     }
 
     @Transactional
-    public StatusResponseDTO createNewStatus(StatusRequestDTO statusDTO) {
+    public StatusResponseDTO createNewStatus(StatusRequestDTO statusDTO, Integer boardId) {
+        Board board = findBoardByIdAndValidate(boardId);
         Status status = new Status();
-        return getStatusResponseDTO(statusDTO, status);
+        return getStatusResponseDTO(statusDTO, status, board);
     }
 
     @Transactional
-    public StatusResponseDTO updateStatus(Integer id, StatusRequestDTO statusDTO) {
+    public StatusResponseDTO updateStatus(Integer id, StatusRequestDTO statusDTO, Integer boardId) {
         Status existingStatus = findStatusByIdAndValidate(id);
+        Board board = findBoardByIdAndValidate(boardId);
         validateStatusForOperation(existingStatus);
-        return getStatusResponseDTO(statusDTO, existingStatus);
+        return getStatusResponseDTO(statusDTO, existingStatus, board);
     }
 
-    private StatusResponseDTO getStatusResponseDTO(StatusRequestDTO statusDTO, Status existingStatus) {
-        Board board = boardRepository.findById(statusDTO.getBoard())
-                .orElseThrow(() -> new ItemNotFoundException("Can not add or update New Task with non-existing status id"));
+    private StatusResponseDTO getStatusResponseDTO(StatusRequestDTO statusDTO, Status existingStatus, Board board) {
         existingStatus.setName(Utils.trimString(statusDTO.getName()));
         existingStatus.setDescription(Utils.checkAndSetDefaultNull(statusDTO.getDescription()));
         existingStatus.setColor(Utils.trimString(statusDTO.getColor()));
@@ -96,8 +103,14 @@ public class StatusService {
 //    }
 
     @Transactional
-    public StatusResponseDTO deleteStatus(Integer id) {
-        Status statusToDelete = findStatusByIdAndValidate(id);
+    public StatusResponseDTO deleteStatus(Integer id, Integer boardId) {
+        if (!statusRepository.existsById(id)) {
+            throw new BadRequestException("Status Id " + id + " DOES NOT EXIST !!!");
+        }
+        if (!boardRepository.existsById(boardId)) {
+            throw new BadRequestException("Board Id " + id + " DOES NOT EXIST !!!");
+        }
+        Status statusToDelete = statusRepository.findStatusByIdAndBoardId(id, boardId);
         validateStatusForOperation(statusToDelete);
         if (!statusToDelete.getTasks().isEmpty()) {
             throw new BadRequestException("Cannot delete status because it has associated tasks.");
@@ -107,9 +120,18 @@ public class StatusService {
     }
 
     @Transactional
-    public StatusResponseDTO deleteTaskAndTransferStatus(Integer id, Integer newId) {
-        Status statusToDelete = findStatusByIdAndValidate(id);
-        Status transferStatus = findStatusByIdAndValidate(newId);
+    public StatusResponseDTO deleteTaskAndTransferStatus(Integer id, Integer newId, Integer boardId) {
+        if (!statusRepository.existsById(id)) {
+            throw new BadRequestException("Status Id " + id + " DOES NOT EXIST !!!");
+        }
+        if (!statusRepository.existsById(newId)) {
+            throw new BadRequestException("Status Id " + id + " DOES NOT EXIST !!!");
+        }
+        if (!boardRepository.existsById(boardId)) {
+            throw new BadRequestException("Board Id " + id + " DOES NOT EXIST !!!");
+        }
+        Status statusToDelete = statusRepository.findStatusByIdAndBoardId(id, boardId);
+        Status transferStatus = statusRepository.findStatusByIdAndBoardId(newId, boardId);
         validateStatusForOperation(statusToDelete);
         List<Task> tasks = taskRepository.findByStatusId(id);
         if (tasks.isEmpty()) {
@@ -117,9 +139,7 @@ public class StatusService {
         }
         int totalTasksAfterTransfer = transferStatus.getTasks().size() + tasks.size();
         boolean isTransferStatusSpecial = transferStatus.getName().equals(Utils.NO_STATUS) || transferStatus.getName().equals(Utils.DONE);
-        System.out.println(isTransferStatusSpecial);
-        System.out.println(transferStatus.getBoard().getLimitMaximumTask());
-        if (totalTasksAfterTransfer > Utils.MAX_SIZE && !isTransferStatusSpecial && transferStatus.getBoard().getLimitMaximumTask()) {
+        if (totalTasksAfterTransfer > Utils.MAX_SIZE && !isTransferStatusSpecial && transferStatus.getBoard().getLimitMaximumStatus()) {
             throw new BadRequestException("Can not transfer status will exceed the limit");
         }
         tasks.forEach(task -> task.setStatus(transferStatus));
@@ -131,6 +151,11 @@ public class StatusService {
     private Status findStatusByIdAndValidate(Integer id) {
         return statusRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Status Id " + id + " DOES NOT EXIST !!!"));
+    }
+
+    private Board findBoardByIdAndValidate(Integer id) {
+        return boardRepository.findById(id)
+                .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
     }
 
     private void validateStatusForOperation(Status status) {
