@@ -7,15 +7,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import sit.int221.integratedproject.kanbanborad.dtos.request.BoardRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusLimitResponseDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.response.StatusResponseDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.response.StatusResponseDetailDTO;
 import sit.int221.integratedproject.kanbanborad.services.BoardService;
-import sit.int221.integratedproject.kanbanborad.services.StatusService;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("")
 @CrossOrigin(origins = "http://localhost")
 public class BoardController {
     @Autowired

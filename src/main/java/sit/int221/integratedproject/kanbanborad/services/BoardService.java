@@ -7,15 +7,10 @@ import org.springframework.stereotype.Service;
 import sit.int221.integratedproject.kanbanborad.dtos.request.BoardRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusLimitResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusResponseDetailDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.response.TaskDetailResponseDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.Board;
 import sit.int221.integratedproject.kanbanborad.entities.Status;
-import sit.int221.integratedproject.kanbanborad.entities.Task;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.BoardRepository;
-import sit.int221.integratedproject.kanbanborad.repositories.StatusRepository;
-import sit.int221.integratedproject.kanbanborad.repositories.TaskRepository;
 import sit.int221.integratedproject.kanbanborad.utils.ListMapper;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
@@ -24,8 +19,6 @@ import java.util.List;
 
 @Service
 public class BoardService {
-    @Autowired
-    private StatusRepository statusRepository;
     @Autowired
     private BoardRepository boardRepository;
     @Autowired
@@ -58,7 +51,7 @@ public class BoardService {
         if (updatedBoard.getLimitMaximumStatus()) {
             List<StatusResponseDetailDTO> statusResponseDTOs = new ArrayList<>();
             for (Status status : updatedBoard.getStatuses()) {
-                if (status.getTasks().size() > Utils.MAX_SIZE) {
+                if (status.getTasks().size() >= Utils.MAX_SIZE) {
                     StatusResponseDetailDTO statusResponseDTO = modelMapper.map(status, StatusResponseDetailDTO.class);
                     statusResponseDTO.setNoOfTasks(status.getTasks().size());
                     statusResponseDTOs.add(statusResponseDTO);

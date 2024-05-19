@@ -11,16 +11,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TaskRequestDTO {
-    @NotNull(message = "Title can not be null")
+    @NotNull
     @Size(min = 1, max = 100)
     @NotBlank
     private String title;
     @Size(min = 1, max = 500)
-    @NotBlank
     private String description;
     @Size(min = 1, max = 30)
-    @NotBlank
     private String assignees;
-    @NotNull(message = "Status can not be null")
+    @NotNull
     private Integer status;
 }

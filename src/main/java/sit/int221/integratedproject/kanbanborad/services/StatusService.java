@@ -4,9 +4,7 @@ import jakarta.transaction.Transactional;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import sit.int221.integratedproject.kanbanborad.dtos.request.BoardRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.request.StatusRequestDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.response.StatusLimitResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusResponseDetailDTO;
 import sit.int221.integratedproject.kanbanborad.entities.Board;
@@ -34,83 +32,39 @@ public class StatusService {
     private ModelMapper modelMapper;
 
     public List<StatusResponseDetailDTO> findAllStatus(Integer boardId) {
-        Board board = findBoardByIdAndValidate(boardId);
+        Board board = getBoardById(boardId);
         List<Status> statuses = board.getStatuses();
-        List<StatusResponseDetailDTO> statusResponseDTOs = new ArrayList<>();
-        for (Status status : statuses) {
-            StatusResponseDetailDTO statusResponseDTO = modelMapper.map(status, StatusResponseDetailDTO.class);
-            statusResponseDTO.setNoOfTasks(status.getTasks().size());
-            statusResponseDTOs.add(statusResponseDTO);
-        }
-        return statusResponseDTOs;
+        return mapStatusToDetailDTO(statuses);
     }
 
     public StatusResponseDTO findStatusById(Integer id, Integer boardId) {
-        if (!statusRepository.existsById(id)) {
-            throw new BadRequestException("Status Id " + id + " DOES NOT EXIST !!!");
-        }
-        if (!boardRepository.existsById(boardId)) {
-            throw new BadRequestException("Board Id " + id + " DOES NOT EXIST !!!");
-        }
+        validateStatusAndBoardExistence(id, boardId);
         Status status = statusRepository.findStatusByIdAndBoardId(id, boardId);
         return modelMapper.map(status, StatusResponseDTO.class);
     }
 
     @Transactional
     public StatusResponseDTO createNewStatus(StatusRequestDTO statusDTO, Integer boardId) {
-        Board board = findBoardByIdAndValidate(boardId);
+        Board board = getBoardById(boardId);
         Status status = new Status();
-        return getStatusResponseDTO(statusDTO, status, board);
+        populateStatusFromDTO(status, statusDTO, board);
+        Status savedStatus = statusRepository.save(status);
+        return modelMapper.map(savedStatus, StatusResponseDTO.class);
     }
 
     @Transactional
     public StatusResponseDTO updateStatus(Integer id, StatusRequestDTO statusDTO, Integer boardId) {
-        Status existingStatus = findStatusByIdAndValidate(id);
-        Board board = findBoardByIdAndValidate(boardId);
+        Status existingStatus = getStatusById(id);
+        Board board = getBoardById(boardId);
         validateStatusForOperation(existingStatus);
-        return getStatusResponseDTO(statusDTO, existingStatus, board);
-    }
-
-    private StatusResponseDTO getStatusResponseDTO(StatusRequestDTO statusDTO, Status existingStatus, Board board) {
-        existingStatus.setName(Utils.trimString(statusDTO.getName()));
-        existingStatus.setDescription(Utils.checkAndSetDefaultNull(statusDTO.getDescription()));
-        existingStatus.setColor(Utils.trimString(statusDTO.getColor()));
-        existingStatus.setBoard(board);
+        populateStatusFromDTO(existingStatus, statusDTO, board);
         Status updatedStatus = statusRepository.save(existingStatus);
         return modelMapper.map(updatedStatus, StatusResponseDTO.class);
     }
 
-//    @Transactional
-//    public StatusLimitResponseDTO updateStatusLimit(Integer id, StatusRequestDTO limitDTO) {
-//        Status existingStatus = findStatusByIdAndValidate(id);
-//        validateStatusForOperation(existingStatus);
-//        int noOfTasks = existingStatus.getTasks().size();
-//        if (limitDTO.getLimitMaximumTask()) {
-//            existingStatus.setLimitMaximumTask(noOfTasks <= Utils.MAX_SIZE);
-//        } else {
-//            existingStatus.setLimitMaximumTask(false);
-//        }
-//        Status updatedStatus = statusRepository.save(existingStatus);
-//        StatusLimitResponseDTO responseDTO = new StatusLimitResponseDTO();
-//        responseDTO.setId(updatedStatus.getId());
-//        responseDTO.setName(updatedStatus.getName());
-//        responseDTO.setLimitMaximumTask(updatedStatus.getLimitMaximumTask());
-//        responseDTO.setNoOfTasks(noOfTasks);
-//        if (noOfTasks > Utils.MAX_SIZE) {
-//            responseDTO.setTasks(updatedStatus.getTasks());
-//        }
-//        return responseDTO;
-//    }
-
     @Transactional
     public StatusResponseDTO deleteStatus(Integer id, Integer boardId) {
-        if (!statusRepository.existsById(id)) {
-            throw new BadRequestException("Status Id " + id + " DOES NOT EXIST !!!");
-        }
-        if (!boardRepository.existsById(boardId)) {
-            throw new BadRequestException("Board Id " + id + " DOES NOT EXIST !!!");
-        }
-        Status statusToDelete = statusRepository.findStatusByIdAndBoardId(id, boardId);
+        Status statusToDelete = validateStatusAndBoardExistence(id, boardId);
         validateStatusForOperation(statusToDelete);
         if (!statusToDelete.getTasks().isEmpty()) {
             throw new BadRequestException("Cannot delete status because it has associated tasks.");
@@ -121,46 +75,75 @@ public class StatusService {
 
     @Transactional
     public StatusResponseDTO deleteTaskAndTransferStatus(Integer id, Integer newId, Integer boardId) {
-        if (!statusRepository.existsById(id)) {
-            throw new BadRequestException("Status Id " + id + " DOES NOT EXIST !!!");
-        }
-        if (!statusRepository.existsById(newId)) {
-            throw new BadRequestException("Status Id " + id + " DOES NOT EXIST !!!");
-        }
-        if (!boardRepository.existsById(boardId)) {
-            throw new BadRequestException("Board Id " + id + " DOES NOT EXIST !!!");
-        }
+        validateStatusAndBoardExistence(id, boardId);
+        validateStatusAndBoardExistence(newId, boardId);
         Status statusToDelete = statusRepository.findStatusByIdAndBoardId(id, boardId);
         Status transferStatus = statusRepository.findStatusByIdAndBoardId(newId, boardId);
         validateStatusForOperation(statusToDelete);
-        List<Task> tasks = taskRepository.findByStatusId(id);
-        if (tasks.isEmpty()) {
-            throw new BadRequestException("Cannot transfer status because there are no tasks to transfer.");
-        }
-        int totalTasksAfterTransfer = transferStatus.getTasks().size() + tasks.size();
-        boolean isTransferStatusSpecial = transferStatus.getName().equals(Utils.NO_STATUS) || transferStatus.getName().equals(Utils.DONE);
-        if (totalTasksAfterTransfer > Utils.MAX_SIZE && !isTransferStatusSpecial && transferStatus.getBoard().getLimitMaximumStatus()) {
-            throw new BadRequestException("Can not transfer status will exceed the limit");
-        }
-        tasks.forEach(task -> task.setStatus(transferStatus));
-        taskRepository.saveAll(tasks);
+        transferTasks(statusToDelete, transferStatus);
         statusRepository.deleteById(statusToDelete.getId());
         return modelMapper.map(transferStatus, StatusResponseDTO.class);
     }
 
-    private Status findStatusByIdAndValidate(Integer id) {
+    private List<StatusResponseDetailDTO> mapStatusToDetailDTO(List<Status> statuses) {
+        List<StatusResponseDetailDTO> statusResponseDTOs = new ArrayList<>();
+        for (Status status : statuses) {
+            StatusResponseDetailDTO statusResponseDTO = modelMapper.map(status, StatusResponseDetailDTO.class);
+            statusResponseDTO.setNoOfTasks(status.getTasks().size());
+            statusResponseDTOs.add(statusResponseDTO);
+        }
+        return statusResponseDTOs;
+    }
+
+    private void populateStatusFromDTO(Status status, StatusRequestDTO statusDTO, Board board) {
+        status.setName(Utils.trimString(statusDTO.getName()));
+        status.setDescription(Utils.checkAndSetDefaultNull(statusDTO.getDescription()));
+        status.setColor(Utils.trimString(statusDTO.getColor()));
+        status.setBoard(board);
+    }
+
+    private void transferTasks(Status fromStatus, Status toStatus) {
+        List<Task> tasks = taskRepository.findByStatusId(fromStatus.getId());
+        if (tasks.isEmpty()) {
+            throw new BadRequestException("Cannot transfer status because there are no tasks to transfer.");
+        }
+        int totalTasksAfterTransfer = toStatus.getTasks().size() + tasks.size();
+        boolean isTransferStatusSpecial = isSpecialStatus(toStatus);
+        if (totalTasksAfterTransfer > Utils.MAX_SIZE && !isTransferStatusSpecial && toStatus.getBoard().getLimitMaximumStatus()) {
+            throw new BadRequestException("Cannot transfer status will exceed the limit");
+        }
+        tasks.forEach(task -> task.setStatus(toStatus));
+        taskRepository.saveAll(tasks);
+    }
+
+    private Status getStatusById(Integer id) {
         return statusRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Status Id " + id + " DOES NOT EXIST !!!"));
     }
 
-    private Board findBoardByIdAndValidate(Integer id) {
+    private Board getBoardById(Integer id) {
         return boardRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
     }
 
+    private Status validateStatusAndBoardExistence(Integer statusId, Integer boardId) {
+        if (!statusRepository.existsById(statusId)) {
+            throw new BadRequestException("Status Id " + statusId + " DOES NOT EXIST !!!");
+        }
+        if (!boardRepository.existsById(boardId)) {
+            throw new BadRequestException("Board Id " + boardId + " DOES NOT EXIST !!!");
+        }
+        return statusRepository.findStatusByIdAndBoardId(statusId, boardId);
+    }
+
     private void validateStatusForOperation(Status status) {
-        if (status.getName().equals(Utils.NO_STATUS) || status.getName().equals(Utils.DONE)) {
+        if (isSpecialStatus(status)) {
             throw new BadRequestException("Cannot edit/delete 'No Status' or 'Done' status.");
         }
     }
+
+    private boolean isSpecialStatus(Status status) {
+        return status.getName().equalsIgnoreCase(Utils.NO_STATUS) || status.getName().equalsIgnoreCase(Utils.DONE);
+    }
+
 }

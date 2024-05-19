@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import sit.int221.integratedproject.kanbanborad.dtos.request.BoardRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.request.StatusRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.*;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
@@ -41,11 +40,6 @@ public class StatusController {
                                                           @PathVariable Integer boardId) {
         return ResponseEntity.status(HttpStatus.OK).body(statusService.updateStatus(id, statusDTO, boardId));
     }
-
-//    @PatchMapping("/{id}/maximum-task")
-//    public ResponseEntity<StatusLimitResponseDTO> updateStatusLimit(@PathVariable Integer id, @RequestBody @Valid StatusRequestDTO limitDTO) {
-//        return ResponseEntity.status(HttpStatus.OK).body(statusService.updateStatusLimit(id, limitDTO));
-//    }
 
 
     @DeleteMapping("/{boardId}/statuses/{id}")
