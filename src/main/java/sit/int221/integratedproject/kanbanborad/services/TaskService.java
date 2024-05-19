@@ -62,8 +62,6 @@ public class TaskService {
     }
 
     public TaskDetailResponseDTO findTaskById(Integer id, Integer boardId) {
-        validateTaskExistence(id);
-        validateBoardExistence(boardId);
         Task task = getTaskByIdAndBoardId(id, boardId);
         return modelMapper.map(task, TaskDetailResponseDTO.class);
     }
@@ -92,8 +90,6 @@ public class TaskService {
 
     @Transactional
     public TaskResponseDTO deleteTask(Integer id, Integer boardId) {
-        validateTaskExistence(id);
-        validateBoardExistence(boardId);
         Task taskToDelete = getTaskByIdAndBoardId(id, boardId);
         taskRepository.deleteById(id);
         return modelMapper.map(taskToDelete, TaskResponseDTO.class);
@@ -103,12 +99,6 @@ public class TaskService {
         List<String> validFields = Arrays.asList("status.name", "status.id", "id", "title", "assignees");
         if (!validFields.contains(sortBy)) {
             throw new BadRequestException("Cannot sort by a field that does not exist");
-        }
-    }
-
-    private void validateTaskExistence(Integer taskId) {
-        if (!taskRepository.existsById(taskId)) {
-            throw new BadRequestException("Task Id " + taskId + " DOES NOT EXIST !!!");
         }
     }
 
@@ -142,6 +132,12 @@ public class TaskService {
     }
 
     private Task getTaskByIdAndBoardId(Integer taskId, Integer boardId) {
+        if (!boardRepository.existsById(boardId)) {
+            throw new BadRequestException("Board Id " + boardId + " DOES NOT EXIST !!!");
+        }
+        if (!taskRepository.existsById(taskId)) {
+            throw new BadRequestException("Task Id " + taskId + " DOES NOT EXIST !!!");
+        }
         return taskRepository.findTaskByIdAndBoardId(taskId, boardId);
     }
 

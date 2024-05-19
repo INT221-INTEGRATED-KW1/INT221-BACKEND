@@ -13,7 +13,6 @@ import lombok.NoArgsConstructor;
 public class TaskRequestDTO {
     @NotNull
     @Size(min = 1, max = 100)
-    @NotBlank
     private String title;
     @Size(min = 1, max = 500)
     private String description;

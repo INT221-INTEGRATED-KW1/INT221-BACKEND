@@ -33,7 +33,7 @@ public class BoardService {
 
     public StatusLimitResponseDTO findBoardById(Integer id) {
         Board board = boardRepository.findById(id)
-                .orElseThrow(() -> new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!"));
+                .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
         return modelMapper.map(board, StatusLimitResponseDTO.class);
     }
 

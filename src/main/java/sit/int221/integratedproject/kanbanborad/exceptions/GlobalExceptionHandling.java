@@ -6,18 +6,11 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
-import org.springframework.validation.method.ParameterValidationResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.client.HttpServerErrorException;
-import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
-import org.springframework.web.method.annotation.HandlerMethodValidationException;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandling {
@@ -68,8 +61,7 @@ public class GlobalExceptionHandling {
 
     private ResponseEntity<ErrorResponse> buildErrorResponse(
             Exception exception, String message, HttpStatus httpStatus, WebRequest request) {
-        String path = ((ServletWebRequest) request).getRequest().getRequestURI();
-        ErrorResponse errorResponse = new ErrorResponse(httpStatus.value(), message, path);
+        ErrorResponse errorResponse = new ErrorResponse(httpStatus.value(), message, request.getDescription(false));
         return ResponseEntity.status(httpStatus).body(errorResponse);
     }
 }

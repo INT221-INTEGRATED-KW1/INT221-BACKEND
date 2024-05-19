@@ -38,8 +38,7 @@ public class StatusService {
     }
 
     public StatusResponseDTO findStatusById(Integer id, Integer boardId) {
-        validateStatusAndBoardExistence(id, boardId);
-        Status status = statusRepository.findStatusByIdAndBoardId(id, boardId);
+        Status status = validateStatusAndBoardExistence(id, boardId);;
         return modelMapper.map(status, StatusResponseDTO.class);
     }
 
@@ -75,10 +74,8 @@ public class StatusService {
 
     @Transactional
     public StatusResponseDTO deleteTaskAndTransferStatus(Integer id, Integer newId, Integer boardId) {
-        validateStatusAndBoardExistence(id, boardId);
-        validateStatusAndBoardExistence(newId, boardId);
-        Status statusToDelete = statusRepository.findStatusByIdAndBoardId(id, boardId);
-        Status transferStatus = statusRepository.findStatusByIdAndBoardId(newId, boardId);
+        Status statusToDelete = validateStatusAndBoardExistence(id, boardId);
+        Status transferStatus = validateStatusAndBoardExistence(newId, boardId);
         validateStatusForOperation(statusToDelete);
         transferTasks(statusToDelete, transferStatus);
         statusRepository.deleteById(statusToDelete.getId());
@@ -127,11 +124,11 @@ public class StatusService {
     }
 
     private Status validateStatusAndBoardExistence(Integer statusId, Integer boardId) {
-        if (!statusRepository.existsById(statusId)) {
-            throw new BadRequestException("Status Id " + statusId + " DOES NOT EXIST !!!");
-        }
         if (!boardRepository.existsById(boardId)) {
             throw new BadRequestException("Board Id " + boardId + " DOES NOT EXIST !!!");
+        }
+        if (!statusRepository.existsById(statusId)) {
+            throw new BadRequestException("Status Id " + statusId + " DOES NOT EXIST !!!");
         }
         return statusRepository.findStatusByIdAndBoardId(statusId, boardId);
     }
