@@ -4,6 +4,7 @@ public class Utils {
     public static String NO_STATUS = "No Status";
     public static String DONE = "Done";
     public static int MAX_SIZE = 10;
+    public static int STATUS_LIMIT = 1;
     public static String trimString(String input) {
         return input != null ? input.trim() : null;
     }

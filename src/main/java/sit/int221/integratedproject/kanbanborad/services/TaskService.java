@@ -1,20 +1,22 @@
 package sit.int221.integratedproject.kanbanborad.services;
 
 import jakarta.transaction.Transactional;
+import jakarta.validation.ConstraintViolationException;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.w3c.dom.ls.LSException;
 import sit.int221.integratedproject.kanbanborad.dtos.request.TaskRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskAddEditResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskDetailResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
-import sit.int221.integratedproject.kanbanborad.entities.Board;
 import sit.int221.integratedproject.kanbanborad.entities.Status;
+import sit.int221.integratedproject.kanbanborad.entities.StatusLimit;
 import sit.int221.integratedproject.kanbanborad.entities.Task;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
-import sit.int221.integratedproject.kanbanborad.repositories.BoardRepository;
+import sit.int221.integratedproject.kanbanborad.repositories.StatusLimitRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.StatusRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.TaskRepository;
 import sit.int221.integratedproject.kanbanborad.utils.ListMapper;
@@ -30,123 +32,94 @@ public class TaskService {
     @Autowired
     private StatusRepository statusRepository;
     @Autowired
-    private BoardRepository boardRepository;
+    private StatusLimitRepository statusLimitRepository;
     @Autowired
     private ModelMapper modelMapper;
     @Autowired
     private ListMapper listMapper;
 
-    public List<TaskResponseDTO> findAllTask(Integer boardId) {
-        Board board = getBoardById(boardId);
-        return listMapper.mapList(board.getTasks(), TaskResponseDTO.class);
+    public List<TaskResponseDTO> findAllTask() {
+        List<Task> tasks = taskRepository.findAll();
+        return listMapper.mapList(tasks, TaskResponseDTO.class);
     }
 
-    public List<TaskResponseDTO> findAllTaskSorted(String sortBy, Integer boardId) {
-        validateBoardExistence(boardId);
+    public List<TaskResponseDTO> findAllTaskSorted(String sortBy) {
         validateSortField(sortBy);
-        List<Task> tasks = taskRepository.findByBoardId(boardId, Sort.by(sortBy));
+        List<Task> tasks = taskRepository.findAll(Sort.by(sortBy));
         return listMapper.mapList(tasks, TaskResponseDTO.class);
     }
 
-    public List<TaskResponseDTO> findAllTaskFiltered(String[] filterStatuses, Integer boardId) {
-        validateBoardExistence(boardId);
-        List<Task> tasks = taskRepository.findByBoardIdAndStatusNameIn(boardId, Arrays.asList(filterStatuses));
+    public List<TaskResponseDTO> findAllTaskFiltered(String[] filterStatuses) {
+        List<Task> tasks = taskRepository.findByStatusNameIn(Arrays.asList(filterStatuses));
         return listMapper.mapList(tasks, TaskResponseDTO.class);
     }
 
-    public List<TaskResponseDTO> findAllTaskSortedAndFiltered(String sortBy, String[] filterStatuses, Integer boardId) {
-        validateBoardExistence(boardId);
+    public List<TaskResponseDTO> findAllTaskSortedAndFiltered(String sortBy, String[] filterStatuses) {
         validateSortField(sortBy);
-        List<Task> tasks = taskRepository.findByBoardIdAndStatusNameIn(boardId, Arrays.asList(filterStatuses), Sort.by(sortBy));
+        List<Task> tasks = taskRepository.findByStatusNameIn(Arrays.asList(filterStatuses), Sort.by(sortBy));
         return listMapper.mapList(tasks, TaskResponseDTO.class);
     }
 
-    public TaskDetailResponseDTO findTaskById(Integer id, Integer boardId) {
-        Task task = getTaskByIdAndBoardId(id, boardId);
+    public TaskDetailResponseDTO findTaskById(Integer id) {
+        Task task = taskRepository.findById(id)
+                .orElseThrow(() -> new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!"));
         return modelMapper.map(task, TaskDetailResponseDTO.class);
     }
 
     @Transactional
-    public TaskAddEditResponseDTO createNewTask(TaskRequestDTO taskDTO, Integer boardId) {
-        Status status = getStatusById(taskDTO.getStatus());
-        Board board = getBoardById(boardId);
-        validateStatusLimit(status);
+    public TaskAddEditResponseDTO createNewTask(TaskRequestDTO taskDTO) {
+        Status status = findStatusByIdOrThrow(taskDTO.getStatus());
+        StatusLimit statusLimit = statusLimitRepository.findById(1)
+                .orElseThrow(() -> new ItemNotFoundException("StatusLimit Id " + 1 + " DOES NOT EXIST !!!"));
+        if (statusLimit.getStatusLimit() && status.getTasks().size() >= Utils.MAX_SIZE) {
+            throw new BadRequestException("Can not add task with status exceed limit");
+        }
         Task task = new Task();
-        populateTaskFromDTO(task, taskDTO, status, board);
+        populateTaskFromDTO(task, taskDTO, status);
         Task savedTask = taskRepository.save(task);
         return modelMapper.map(savedTask, TaskAddEditResponseDTO.class);
     }
 
     @Transactional
-    public TaskAddEditResponseDTO updateTask(Integer id, TaskRequestDTO taskDTO, Integer boardId) {
-        Task existingTask = getTaskById(id);
-        Status status = getStatusById(taskDTO.getStatus());
-        Board board = getBoardById(boardId);
-        validateStatusLimit(status);
-        populateTaskFromDTO(existingTask, taskDTO, status, board);
+    public TaskAddEditResponseDTO updateTask(Integer id, TaskRequestDTO taskDTO) {
+        Task existingTask = taskRepository.findById(id)
+                .orElseThrow(() -> new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!"));
+        Status status = findStatusByIdOrThrow(taskDTO.getStatus());
+        StatusLimit statusLimit = statusLimitRepository.findById(Utils.STATUS_LIMIT)
+                .orElseThrow(() -> new ItemNotFoundException("StatusLimit Id " + id + " DOES NOT EXIST !!!"));
+        if (statusLimit.getStatusLimit() && status.getTasks().size() >= Utils.MAX_SIZE) {
+            throw new BadRequestException("Cannot update task. Status limit exceeded.");
+        }
+        populateTaskFromDTO(existingTask, taskDTO, status);
         Task updatedTask = taskRepository.save(existingTask);
         return modelMapper.map(updatedTask, TaskAddEditResponseDTO.class);
     }
 
     @Transactional
-    public TaskResponseDTO deleteTask(Integer id, Integer boardId) {
-        Task taskToDelete = getTaskByIdAndBoardId(id, boardId);
+    public TaskResponseDTO deleteTask(Integer id) {
+        Task taskToDelete = taskRepository.findById(id)
+                .orElseThrow(() -> new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!"));
         taskRepository.deleteById(id);
         return modelMapper.map(taskToDelete, TaskResponseDTO.class);
     }
 
     private void validateSortField(String sortBy) {
-        List<String> validFields = Arrays.asList("status.name", "status.id", "id", "title", "assignees");
+        List<String> validFields = Arrays.asList("status.name");
         if (!validFields.contains(sortBy)) {
-            throw new BadRequestException("Cannot sort by a field that does not exist");
+            throw new BadRequestException("Cannot sort by a another field");
         }
     }
 
-    private void validateBoardExistence(Integer boardId) {
-        if (!boardRepository.existsById(boardId)) {
-            throw new BadRequestException("Board Id " + boardId + " DOES NOT EXIST !!!");
-        }
-    }
-
-    private void validateStatusLimit(Status status) {
-        boolean isTransferStatusSpecial = status.getName().equalsIgnoreCase(Utils.NO_STATUS) ||
-                status.getName().equalsIgnoreCase(Utils.DONE);
-        if (status.getBoard().getLimitMaximumStatus() && !isTransferStatusSpecial && status.getTasks().size() >= Utils.MAX_SIZE) {
-            throw new BadRequestException("Status limit exceeded.");
-        }
-    }
-
-    private Status getStatusById(Integer statusId) {
+    private Status findStatusByIdOrThrow(Integer statusId) {
         return statusRepository.findById(statusId)
-                .orElseThrow(() -> new ItemNotFoundException("Status Id " + statusId + " DOES NOT EXIST !!!"));
+                .orElseThrow(() -> new ItemNotFoundException("Can not add or update New Task with non-existing status id"));
     }
 
-    private Board getBoardById(Integer boardId) {
-        return boardRepository.findById(boardId)
-                .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
-    }
-
-    private Task getTaskById(Integer taskId) {
-        return taskRepository.findById(taskId)
-                .orElseThrow(() -> new ItemNotFoundException("Task Id " + taskId + " DOES NOT EXIST !!!"));
-    }
-
-    private Task getTaskByIdAndBoardId(Integer taskId, Integer boardId) {
-        if (!boardRepository.existsById(boardId)) {
-            throw new BadRequestException("Board Id " + boardId + " DOES NOT EXIST !!!");
-        }
-        if (!taskRepository.existsById(taskId)) {
-            throw new BadRequestException("Task Id " + taskId + " DOES NOT EXIST !!!");
-        }
-        return taskRepository.findTaskByIdAndBoardId(taskId, boardId);
-    }
-
-    private void populateTaskFromDTO(Task task, TaskRequestDTO taskDTO, Status status, Board board) {
+    private void populateTaskFromDTO(Task task, TaskRequestDTO taskDTO, Status status) {
         task.setTitle(Utils.trimString(taskDTO.getTitle()));
         task.setDescription(Utils.checkAndSetDefaultNull(taskDTO.getDescription()));
         task.setAssignees(Utils.checkAndSetDefaultNull(taskDTO.getAssignees()));
         task.setStatus(status);
-        task.setBoard(board);
     }
 
 }

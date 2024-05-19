@@ -8,7 +8,7 @@ import java.util.List;
 @Data
 public class StatusLimitResponseDTO {
     private Integer id;
-    private Boolean limitMaximumStatus;
+    private Boolean statusLimit;
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private List<StatusResponseDetailDTO> statuses;
 }

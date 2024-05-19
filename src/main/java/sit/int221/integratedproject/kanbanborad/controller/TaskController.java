@@ -14,48 +14,48 @@ import sit.int221.integratedproject.kanbanborad.services.TaskService;
 import java.util.List;
 
 @RestController
+@RequestMapping("/v2/tasks")
 @CrossOrigin(origins = "http://localhost")
 public class TaskController {
     @Autowired
     private TaskService taskService;
 
-    @GetMapping("/{boardId}/tasks")
+    @GetMapping("")
     public ResponseEntity<List<TaskResponseDTO>> getAllTask(@RequestParam(required = false) String sortBy,
-                                                            @RequestParam(required = false) String[] filterStatuses,
-                                                            @PathVariable Integer boardId) {
+                                                            @RequestParam(required = false) String[] filterStatuses) {
         List<TaskResponseDTO> tasts;
         if (sortBy == null && filterStatuses == null) {
-            tasts = taskService.findAllTask(boardId);
+            tasts = taskService.findAllTask();
         } else if (sortBy != null && filterStatuses == null) {
-            tasts = taskService.findAllTaskSorted(sortBy, boardId);
+            tasts = taskService.findAllTaskSorted(sortBy);
         } else if (sortBy == null && filterStatuses != null) {
-            tasts = taskService.findAllTaskFiltered(filterStatuses, boardId);
+            tasts = taskService.findAllTaskFiltered(filterStatuses);
         } else {
-            tasts = taskService.findAllTaskSortedAndFiltered(sortBy, filterStatuses, boardId);
+            tasts = taskService.findAllTaskSortedAndFiltered(sortBy, filterStatuses);
         }
         return ResponseEntity.status(HttpStatus.OK).body(tasts);
     }
 
-    @GetMapping("/{boardId}/tasks/{id}")
-    public ResponseEntity<TaskDetailResponseDTO> getTaskById(@PathVariable Integer id, @PathVariable Integer boardId) {
-        return ResponseEntity.status(HttpStatus.OK).body(taskService.findTaskById(id, boardId));
+    @GetMapping("/{id}")
+    public ResponseEntity<TaskDetailResponseDTO> getTaskById(@PathVariable Integer id) {
+        return ResponseEntity.status(HttpStatus.OK).body(taskService.findTaskById(id));
     }
 
-    @PostMapping("/{boardId}/tasks")
-    public ResponseEntity<TaskAddEditResponseDTO> addNewTask(@RequestBody @Valid TaskRequestDTO taskDTO,
-                                                             @PathVariable Integer boardId) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(taskService.createNewTask(taskDTO, boardId));
+    @PostMapping("")
+    public ResponseEntity<TaskAddEditResponseDTO> addNewTask(@RequestBody @Valid TaskRequestDTO taskDTO) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(taskService.createNewTask(taskDTO));
     }
 
-    @PutMapping("/{boardId}/tasks/{id}")
-    public ResponseEntity<TaskAddEditResponseDTO> updateTask(@PathVariable Integer id, @RequestBody @Valid TaskRequestDTO taskDTO,
-                                                             @PathVariable Integer boardId) {
-        return ResponseEntity.status(HttpStatus.OK).body(taskService.updateTask(id, taskDTO, boardId));
+    @PutMapping("/{id}")
+    public ResponseEntity<TaskAddEditResponseDTO> updateTask(@PathVariable Integer id, @RequestBody @Valid TaskRequestDTO taskDTO) {
+        return ResponseEntity.status(HttpStatus.OK).body(taskService.updateTask(id, taskDTO));
     }
 
-    @DeleteMapping("/{boardId}/tasks/{id}")
-    public ResponseEntity<TaskResponseDTO> removeTask(@PathVariable Integer id, @PathVariable Integer boardId) {
-        return ResponseEntity.status(HttpStatus.OK).body(taskService.deleteTask(id, boardId));
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<TaskResponseDTO> removeTask(@PathVariable Integer id) {
+        return ResponseEntity.status(HttpStatus.OK).body(taskService.deleteTask(id));
     }
+
 
 }

@@ -2,7 +2,6 @@ package sit.int221.integratedproject.kanbanborad.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -30,9 +29,6 @@ public class Status {
     private String description;
     @Size(min = 1, max = 20)
     private String color;
-    @ManyToOne
-    @JoinColumn(name = "board_id")
-    private Board board;
     @JsonIgnore
     @OneToMany(mappedBy = "status")
     private List<Task> tasks = new ArrayList<>();

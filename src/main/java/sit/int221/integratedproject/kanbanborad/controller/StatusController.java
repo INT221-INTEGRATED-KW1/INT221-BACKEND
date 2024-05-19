@@ -13,48 +13,45 @@ import sit.int221.integratedproject.kanbanborad.services.StatusService;
 import java.util.List;
 
 @RestController
+@RequestMapping("/v2/statuses")
 @CrossOrigin(origins = "http://localhost")
 public class StatusController {
     @Autowired
     private StatusService statusService;
 
-    @GetMapping("/{boardId}/statuses")
-    public ResponseEntity<List<StatusResponseDetailDTO>> getAllStatus(@PathVariable Integer boardId) {
-        return ResponseEntity.status(HttpStatus.OK).body(statusService.findAllStatus(boardId));
+    @GetMapping("")
+    public ResponseEntity<List<StatusResponseDetailDTO>> getAllStatus() {
+        return ResponseEntity.status(HttpStatus.OK).body(statusService.findAllStatus());
     }
 
-    @GetMapping("/{boardId}/statuses/{id}")
-    public ResponseEntity<StatusResponseDTO> getTaskById(@PathVariable Integer id, @PathVariable Integer boardId) {
-        return ResponseEntity.status(HttpStatus.OK).body(statusService.findStatusById(id, boardId));
+    @GetMapping("/{id}")
+    public ResponseEntity<StatusResponseDTO> getStatusById(@PathVariable Integer id) {
+        return ResponseEntity.status(HttpStatus.OK).body(statusService.findStatusById(id));
     }
 
-    @PostMapping("/{boardId}/statuses")
-    public ResponseEntity<StatusResponseDTO> addNewStatus(@RequestBody @Valid StatusRequestDTO statusDTO,
-                                                          @PathVariable Integer boardId) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(statusService.createNewStatus(statusDTO, boardId));
+    @PostMapping("")
+    public ResponseEntity<StatusResponseDTO> addNewStatus(@RequestBody @Valid StatusRequestDTO statusDTO) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(statusService.createNewStatus(statusDTO));
     }
 
-    @PutMapping("/{boardId}/statuses/{id}")
+    @PutMapping("/{id}")
     public ResponseEntity<StatusResponseDTO> updateStatus(@PathVariable Integer id,
-                                                          @RequestBody @Valid StatusRequestDTO statusDTO,
-                                                          @PathVariable Integer boardId) {
-        return ResponseEntity.status(HttpStatus.OK).body(statusService.updateStatus(id, statusDTO, boardId));
+                                                          @RequestBody @Valid StatusRequestDTO statusDTO) {
+        return ResponseEntity.status(HttpStatus.OK).body(statusService.updateStatus(id, statusDTO));
     }
 
-
-    @DeleteMapping("/{boardId}/statuses/{id}")
-    public ResponseEntity<StatusResponseDTO> removeStatus(@PathVariable Integer id, @PathVariable Integer boardId) {
-        return ResponseEntity.status(HttpStatus.OK).body(statusService.deleteStatus(id, boardId));
+    @DeleteMapping("/{id}")
+    public ResponseEntity<StatusResponseDTO> removeStatus(@PathVariable Integer id) {
+        return ResponseEntity.status(HttpStatus.OK).body(statusService.deleteStatus(id));
     }
 
-    @DeleteMapping("/{boardId}/statuses/{id}/{newId}")
+    @DeleteMapping("/{id}/{newId}")
     public ResponseEntity<StatusResponseDTO> removeStatusAndTransferName(@PathVariable Integer id,
-                                                                         @PathVariable Integer newId,
-                                                                         @PathVariable Integer boardId) {
+                                                                         @PathVariable Integer newId) {
         if (id.equals(newId)) {
             throw new BadRequestException("You can not transfer the same status");
         }
-        return ResponseEntity.status(HttpStatus.OK).body(statusService.deleteTaskAndTransferStatus(id, newId, boardId));
+        return ResponseEntity.status(HttpStatus.OK).body(statusService.deleteTaskAndTransferStatus(id, newId));
     }
 
 }
