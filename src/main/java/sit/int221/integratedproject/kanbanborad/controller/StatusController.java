@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import sit.int221.integratedproject.kanbanborad.dtos.request.StatusRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.*;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
@@ -49,7 +50,7 @@ public class StatusController {
     public ResponseEntity<StatusResponseDTO> removeStatusAndTransferName(@PathVariable Integer id,
                                                                          @PathVariable Integer newId) {
         if (id.equals(newId)) {
-            throw new BadRequestException("You can not transfer the same status");
+            throw new BadRequestException("destination status for task transfer not specified");
         }
         return ResponseEntity.status(HttpStatus.OK).body(statusService.deleteTaskAndTransferStatus(id, newId));
     }

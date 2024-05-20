@@ -3,6 +3,7 @@ package sit.int221.integratedproject.kanbanborad.exceptions;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+
 
 @RestControllerAdvice
 public class GlobalExceptionHandling {
@@ -27,10 +29,27 @@ public class GlobalExceptionHandling {
     }
     @ExceptionHandler(DataIntegrityViolationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ResponseEntity<ErrorResponse> handleConstraintViolationException(
-            DataIntegrityViolationException exception, WebRequest request){
-        String message = exception.getMessage().substring(0,exception.getMessage().indexOf(']')+1);
-        return buildErrorResponse(exception, message, HttpStatus.BAD_REQUEST,request);
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
+            DataIntegrityViolationException exception, WebRequest request) {
+        String message = "Data integrity violation";
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                "Validation error. Check 'errors' field for details.",
+                request.getDescription(false));
+        if (exception.getRootCause() != null) {
+            String rootCauseMessage = exception.getRootCause().getMessage();
+            checkForUniqueConstraintViolation(rootCauseMessage, errorResponse);
+        }
+        if (!errorResponse.getErrors().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+        return buildErrorResponse(exception, message, HttpStatus.BAD_REQUEST, request);
+    }
+
+    private void checkForUniqueConstraintViolation(String rootCauseMessage, ErrorResponse errorResponse) {
+        if (rootCauseMessage.contains("status.name")) {
+            errorResponse.addValidationError("name", "must be unique");
+        }
     }
     @ExceptionHandler(ConstraintViolationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -42,11 +61,24 @@ public class GlobalExceptionHandling {
         }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(validationErrorResponse);
     }
+
+    @ExceptionHandler(FieldNotFoundException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ResponseEntity<ErrorResponse> handleResourceNotFoundException(FieldNotFoundException ex, WebRequest request) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                "Resource not found. Check 'errors' field for details.",
+                request.getDescription(false));
+        errorResponse.addValidationError(ex.getFieldName(), "does not exist");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
     @ExceptionHandler(ItemNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ResponseEntity<ErrorResponse> handleItemNotFoundException(ItemNotFoundException exception, WebRequest request) {
         return buildErrorResponse(exception,exception.getMessage() ,HttpStatus.NOT_FOUND, request);
     }
+
     @ExceptionHandler(GeneralException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ResponseEntity<ErrorResponse> handleAllUncaughtException(Exception exception, WebRequest request) {
