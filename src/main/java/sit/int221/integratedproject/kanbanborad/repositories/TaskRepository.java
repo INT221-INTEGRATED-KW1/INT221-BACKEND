@@ -8,6 +8,7 @@ import java.util.List;
 
 public interface TaskRepository extends JpaRepository<Task, Integer> {
     List<Task> findByStatusId(Integer id);
-    List<Task> findByStatusNameIn(List<String> statusNames);
+    @Query("SELECT t FROM Task t WHERE t.status.name IN :statusNames ORDER BY t.id")
+    List<Task> findByStatusNameIn(@Param("statusNames") List<String> statusNames);
     List<Task> findByStatusNameIn(List<String> statusNames, Sort sort);
 }
