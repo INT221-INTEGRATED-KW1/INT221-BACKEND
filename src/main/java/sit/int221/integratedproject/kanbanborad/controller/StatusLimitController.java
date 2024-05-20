@@ -12,7 +12,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/v2/statusesLimit")
-@CrossOrigin(origins = "http://localhost")
+@CrossOrigin(origins = {"http://ip23kw1.sit.kmutt.ac.th", "http://intproj23.sit.kmutt.ac.th"})
 public class StatusLimitController {
     @Autowired
     private StatusLimitService statusLimitService;
