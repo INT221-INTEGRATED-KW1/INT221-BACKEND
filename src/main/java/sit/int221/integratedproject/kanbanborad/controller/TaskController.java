@@ -29,6 +29,7 @@ public class TaskController {
         } else if (sortBy != null && filterStatuses == null) {
             tasts = taskService.findAllTaskSorted(sortBy);
         } else if (sortBy == null && filterStatuses != null) {
+
             tasts = taskService.findAllTaskFiltered(filterStatuses);
         } else {
             tasts = taskService.findAllTaskSortedAndFiltered(sortBy, filterStatuses);
