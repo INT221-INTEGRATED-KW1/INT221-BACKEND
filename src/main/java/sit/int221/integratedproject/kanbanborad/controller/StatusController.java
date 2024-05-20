@@ -15,7 +15,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/v2/statuses")
-@CrossOrigin(origins = {"http://ip23kw1.sit.kmutt.ac.th", "http://intproj23.sit.kmutt.ac.th"})
+@CrossOrigin(origins = "http://localhost")
 public class StatusController {
     @Autowired
     private StatusService statusService;
