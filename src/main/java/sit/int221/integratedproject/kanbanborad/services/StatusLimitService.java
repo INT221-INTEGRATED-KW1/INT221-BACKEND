@@ -12,7 +12,6 @@ import sit.int221.integratedproject.kanbanborad.entities.StatusLimit;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.StatusLimitRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.StatusRepository;
-import sit.int221.integratedproject.kanbanborad.utils.ListMapper;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
 import java.util.ArrayList;
@@ -26,12 +25,37 @@ public class StatusLimitService {
     private ModelMapper modelMapper;
     @Autowired
     private StatusRepository statusRepository;
-    @Autowired
-    private ListMapper listMapper;
 
     public List<StatusLimitResponseDTO> findAllStatusLimit() {
         List<StatusLimit> statusLimits = statusLimitRepository.findAll();
-        return listMapper.mapList(statusLimits, StatusLimitResponseDTO.class);
+        List<StatusLimitResponseDTO> responseDTOs = new ArrayList<>();
+        for (StatusLimit existingStatusLimit : statusLimits) {
+            StatusLimitResponseDTO responseDTO = mapToStatusLimitResponseDTO(existingStatusLimit);
+            responseDTOs.add(responseDTO);
+        }
+        return responseDTOs;
+    }
+
+    private StatusLimitResponseDTO mapToStatusLimitResponseDTO(StatusLimit existingStatusLimit) {
+        StatusLimitResponseDTO responseDTO = modelMapper.map(existingStatusLimit, StatusLimitResponseDTO.class);
+        if (existingStatusLimit.getStatusLimit()) {
+            List<StatusResponseDetailDTO> statusResponseDTOs = getStatusResponseDTOs();
+            responseDTO.setStatuses(statusResponseDTOs);
+        }
+        return responseDTO;
+    }
+
+    private List<StatusResponseDetailDTO> getStatusResponseDTOs() {
+        List<StatusResponseDetailDTO> statusResponseDTOs = new ArrayList<>();
+        List<Status> statuses = statusRepository.findAll();
+        for (Status status : statuses) {
+            if (status.getTasks().size() >= Utils.MAX_SIZE) {
+                StatusResponseDetailDTO statusResponseDTO = modelMapper.map(status, StatusResponseDetailDTO.class);
+                statusResponseDTO.setNoOfTasks(status.getTasks().size());
+                statusResponseDTOs.add(statusResponseDTO);
+            }
+        }
+        return statusResponseDTOs;
     }
 
     public StatusLimitResponseDTO findStatusLimitById(Integer id) {
@@ -47,24 +71,7 @@ public class StatusLimitService {
         existingStatusLimit.setStatusLimit(statusLimitRequestDTO.getStatusLimit());
         StatusLimit updatedStatusLimit = statusLimitRepository.save(existingStatusLimit);
 
-        StatusLimitResponseDTO responseDTO = new StatusLimitResponseDTO();
-        responseDTO.setId(updatedStatusLimit.getId());
-        responseDTO.setStatusLimit(updatedStatusLimit.getStatusLimit());
-
-        if (updatedStatusLimit.getStatusLimit()) {
-            List<StatusResponseDetailDTO> statusResponseDTOs = new ArrayList<>();
-            List<Status> statuses = statusRepository.findAll();
-            for (Status status : statuses) {
-                if (status.getTasks().size() >= Utils.MAX_SIZE) {
-                    StatusResponseDetailDTO statusResponseDTO = modelMapper.map(status, StatusResponseDetailDTO.class);
-                    statusResponseDTO.setNoOfTasks(status.getTasks().size());
-                    statusResponseDTOs.add(statusResponseDTO);
-                }
-            }
-            responseDTO.setStatuses(statusResponseDTOs);
-        }
-
+        StatusLimitResponseDTO responseDTO = mapToStatusLimitResponseDTO(updatedStatusLimit);
         return responseDTO;
     }
-
 }
