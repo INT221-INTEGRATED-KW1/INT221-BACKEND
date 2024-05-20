@@ -48,24 +48,26 @@ public class StatusService {
     }
 
     @Transactional
-    public StatusResponseDTO createNewStatus(StatusRequestDTO statusDTO) {
+    public StatusResponseDetailDTO createNewStatus(StatusRequestDTO statusDTO) {
         Status status = new Status();
         return getStatusResponseDTO(statusDTO, status);
     }
 
     @Transactional
-    public StatusResponseDTO updateStatus(Integer id, StatusRequestDTO statusDTO) {
+    public StatusResponseDetailDTO updateStatus(Integer id, StatusRequestDTO statusDTO) {
         Status existingStatus = findStatusByIdAndValidate(id);
         validateStatusForOperation(existingStatus);
         return getStatusResponseDTO(statusDTO, existingStatus);
     }
 
-    private StatusResponseDTO getStatusResponseDTO(StatusRequestDTO statusDTO, Status existingStatus) {
+    private StatusResponseDetailDTO getStatusResponseDTO(StatusRequestDTO statusDTO, Status existingStatus) {
         existingStatus.setName(Utils.trimString(statusDTO.getName()));
         existingStatus.setDescription(Utils.checkAndSetDefaultNull(statusDTO.getDescription()));
         existingStatus.setColor(Utils.trimString(statusDTO.getColor()));
         Status updatedStatus = statusRepository.save(existingStatus);
-        return modelMapper.map(updatedStatus, StatusResponseDTO.class);
+        StatusResponseDetailDTO statusResponseDetailDTO = modelMapper.map(updatedStatus, StatusResponseDetailDTO.class);
+        statusResponseDetailDTO.setNoOfTasks(updatedStatus.getTasks().size());
+        return statusResponseDetailDTO;
     }
 
     @Transactional
