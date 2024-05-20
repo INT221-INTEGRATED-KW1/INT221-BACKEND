@@ -68,7 +68,6 @@ public class StatusService {
         return modelMapper.map(updatedStatus, StatusResponseDTO.class);
     }
 
-
     @Transactional
     public StatusResponseDTO deleteStatus(Integer id) {
         Status statusToDelete = findStatusByIdAndValidate(id);
@@ -89,13 +88,7 @@ public class StatusService {
         if (tasks.isEmpty()) {
             throw new BadRequestException("Cannot transfer status because there are no tasks to transfer.");
         }
-        int totalTasksAfterTransfer = transferStatus.getTasks().size() + tasks.size();
-        StatusLimit statusLimit = statusLimitRepository.findById(Utils.STATUS_LIMIT)
-                .orElseThrow(() -> new ItemNotFoundException("StatusLimit Id " + Utils.STATUS_LIMIT + " DOES NOT EXIST !!!"));
-        boolean isTransferStatusSpecial = transferStatus.getName().equals(Utils.NO_STATUS) || transferStatus.getName().equals(Utils.DONE);
-        if (totalTasksAfterTransfer > Utils.MAX_SIZE && !isTransferStatusSpecial && statusLimit.getStatusLimit()) {
-            throw new BadRequestException("Can not transfer status will exceed the limit");
-        }
+        checkStatusLimit(transferStatus, tasks.size());
         tasks.forEach(task -> task.setStatus(transferStatus));
         taskRepository.saveAll(tasks);
         statusRepository.deleteById(statusToDelete.getId());
@@ -110,6 +103,17 @@ public class StatusService {
     private void validateStatusForOperation(Status status) {
         if (status.getName().equals(Utils.NO_STATUS) || status.getName().equals(Utils.DONE)) {
             throw new BadRequestException("Cannot edit/delete 'No Status' or 'Done' status.");
+        }
+    }
+
+    private void checkStatusLimit(Status status, int additionalTasks) {
+        int totalTasksAfterTransfer = status.getTasks().size() + additionalTasks;
+        StatusLimit statusLimit = statusLimitRepository.findById(Utils.STATUS_LIMIT)
+                .orElseThrow(() -> new ItemNotFoundException("StatusLimit Id " + Utils.STATUS_LIMIT + " DOES NOT EXIST !!!"));
+
+        boolean isSpecialStatus = status.getName().equals(Utils.NO_STATUS) || status.getName().equals(Utils.DONE);
+        if (totalTasksAfterTransfer > Utils.MAX_SIZE && !isSpecialStatus && statusLimit.getStatusLimit()) {
+            throw new BadRequestException("Cannot transfer status; limit exceeded.");
         }
     }
 }

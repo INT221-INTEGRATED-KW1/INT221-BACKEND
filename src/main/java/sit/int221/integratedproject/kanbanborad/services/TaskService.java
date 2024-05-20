@@ -69,11 +69,7 @@ public class TaskService {
     @Transactional
     public TaskAddEditResponseDTO createNewTask(TaskRequestDTO taskDTO) {
         Status status = findStatusByIdOrThrow(taskDTO.getStatus());
-        StatusLimit statusLimit = statusLimitRepository.findById(1)
-                .orElseThrow(() -> new ItemNotFoundException("StatusLimit Id " + 1 + " DOES NOT EXIST !!!"));
-        if (statusLimit.getStatusLimit() && status.getTasks().size() >= Utils.MAX_SIZE) {
-            throw new BadRequestException("Can not add task with status exceed limit");
-        }
+        checkStatusLimit(status);
         Task task = new Task();
         populateTaskFromDTO(task, taskDTO, status);
         Task savedTask = taskRepository.save(task);
@@ -85,11 +81,7 @@ public class TaskService {
         Task existingTask = taskRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Task Id " + id + " DOES NOT EXIST !!!"));
         Status status = findStatusByIdOrThrow(taskDTO.getStatus());
-        StatusLimit statusLimit = statusLimitRepository.findById(Utils.STATUS_LIMIT)
-                .orElseThrow(() -> new ItemNotFoundException("StatusLimit Id " + id + " DOES NOT EXIST !!!"));
-        if (statusLimit.getStatusLimit() && status.getTasks().size() >= Utils.MAX_SIZE) {
-            throw new BadRequestException("Cannot update task. Status limit exceeded.");
-        }
+       checkStatusLimit(status);
         populateTaskFromDTO(existingTask, taskDTO, status);
         Task updatedTask = taskRepository.save(existingTask);
         return modelMapper.map(updatedTask, TaskAddEditResponseDTO.class);
@@ -113,6 +105,15 @@ public class TaskService {
     private Status findStatusByIdOrThrow(Integer statusId) {
         return statusRepository.findById(statusId)
                 .orElseThrow(() -> new ItemNotFoundException("Can not add or update New Task with non-existing status id"));
+    }
+
+    private void checkStatusLimit(Status status) {
+        StatusLimit statusLimit = statusLimitRepository.findById(Utils.STATUS_LIMIT)
+                .orElseThrow(() -> new ItemNotFoundException("StatusLimit Id " + Utils.STATUS_LIMIT + " DOES NOT EXIST !!!"));
+        boolean isSpecialStatus = status.getName().equals(Utils.NO_STATUS) || status.getName().equals(Utils.DONE);
+        if (statusLimit.getStatusLimit() && !isSpecialStatus &&status.getTasks().size() >= Utils.MAX_SIZE) {
+            throw new BadRequestException("Status limit exceeded.");
+        }
     }
 
     private void populateTaskFromDTO(Task task, TaskRequestDTO taskDTO, Status status) {
