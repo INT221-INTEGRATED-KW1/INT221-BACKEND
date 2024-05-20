@@ -2,6 +2,8 @@ package sit.int221.integratedproject.kanbanborad.repositories;
 
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import sit.int221.integratedproject.kanbanborad.entities.Task;
 
 import java.util.List;
