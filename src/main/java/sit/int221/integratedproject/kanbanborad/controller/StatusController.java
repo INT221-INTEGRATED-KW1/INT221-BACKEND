@@ -1,11 +1,14 @@
 package sit.int221.integratedproject.kanbanborad.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import sit.int221.integratedproject.kanbanborad.dtos.request.StatusRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.*;
+import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.services.StatusService;
 
 import java.util.List;
@@ -23,18 +26,18 @@ public class StatusController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<StatusResponseDTO> getTaskById(@PathVariable Integer id) {
+    public ResponseEntity<StatusResponseDTO> getStatusById(@PathVariable Integer id) {
         return ResponseEntity.status(HttpStatus.OK).body(statusService.findStatusById(id));
     }
 
     @PostMapping("")
-    public ResponseEntity<StatusResponseDTO> addNewStatus(@RequestBody StatusRequestDTO statusDTO) {
+    public ResponseEntity<StatusResponseDTO> addNewStatus(@RequestBody @Valid StatusRequestDTO statusDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(statusService.createNewStatus(statusDTO));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<StatusResponseDTO> updateStatus(@PathVariable Integer id,
-                                                               @RequestBody StatusRequestDTO statusDTO) {
+                                                          @RequestBody @Valid StatusRequestDTO statusDTO) {
         return ResponseEntity.status(HttpStatus.OK).body(statusService.updateStatus(id, statusDTO));
     }
 
@@ -46,6 +49,9 @@ public class StatusController {
     @DeleteMapping("/{id}/{newId}")
     public ResponseEntity<StatusResponseDTO> removeStatusAndTransferName(@PathVariable Integer id,
                                                                          @PathVariable Integer newId) {
+        if (id.equals(newId)) {
+            throw new BadRequestException("destination status for task transfer not specified");
+        }
         return ResponseEntity.status(HttpStatus.OK).body(statusService.deleteTaskAndTransferStatus(id, newId));
     }
 

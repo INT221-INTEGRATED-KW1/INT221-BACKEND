@@ -1,5 +1,6 @@
 package sit.int221.integratedproject.kanbanborad.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,8 +21,19 @@ public class TaskController {
     private TaskService taskService;
 
     @GetMapping("")
-    public ResponseEntity<List<TaskResponseDTO>> getAllTask() {
-        return ResponseEntity.status(HttpStatus.OK).body(taskService.findAllTask());
+    public ResponseEntity<List<TaskResponseDTO>> getAllTask(@RequestParam(required = false) String sortBy,
+                                                            @RequestParam(required = false) String[] filterStatuses) {
+        List<TaskResponseDTO> tasts;
+        if (sortBy == null && filterStatuses == null) {
+            tasts = taskService.findAllTask();
+        } else if (sortBy != null && filterStatuses == null) {
+            tasts = taskService.findAllTaskSorted(sortBy);
+        } else if (sortBy == null && filterStatuses != null) {
+            tasts = taskService.findAllTaskFiltered(filterStatuses);
+        } else {
+            tasts = taskService.findAllTaskSortedAndFiltered(sortBy, filterStatuses);
+        }
+        return ResponseEntity.status(HttpStatus.OK).body(tasts);
     }
 
     @GetMapping("/{id}")
@@ -30,14 +42,15 @@ public class TaskController {
     }
 
     @PostMapping("")
-    public ResponseEntity<TaskAddEditResponseDTO> addNewTask(@RequestBody TaskRequestDTO taskDTO) {
+    public ResponseEntity<TaskAddEditResponseDTO> addNewTask(@RequestBody @Valid TaskRequestDTO taskDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(taskService.createNewTask(taskDTO));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<TaskAddEditResponseDTO> updateTask(@PathVariable Integer id, @RequestBody TaskRequestDTO taskDTO) {
+    public ResponseEntity<TaskAddEditResponseDTO> updateTask(@PathVariable Integer id, @RequestBody @Valid TaskRequestDTO taskDTO) {
         return ResponseEntity.status(HttpStatus.OK).body(taskService.updateTask(id, taskDTO));
     }
+
 
     @DeleteMapping("/{id}")
     public ResponseEntity<TaskResponseDTO> removeTask(@PathVariable Integer id) {

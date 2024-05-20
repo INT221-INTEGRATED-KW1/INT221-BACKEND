@@ -8,5 +8,5 @@ public class StatusResponseDetailDTO {
     private String name;
     private String description;
     private String color;
-    private Integer countTask;
+    private Integer noOfTasks;
 }

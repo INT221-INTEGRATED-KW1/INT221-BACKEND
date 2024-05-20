@@ -17,14 +17,14 @@ public class Task {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-    @NotNull(message = "Title can not be null")
+    @NotNull
     @Size(min = 1, max = 100)
     private String title;
     @Size(min = 1, max = 500)
     private String description;
     @Size(min = 1, max = 30)
     private String assignees;
-    @NotNull(message = "Status can not be null")
+    @NotNull
     @ManyToOne
     @JoinColumn(name = "status_id")
     private Status status;
