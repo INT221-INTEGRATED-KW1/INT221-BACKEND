@@ -31,12 +31,12 @@ public class StatusController {
     }
 
     @PostMapping("")
-    public ResponseEntity<StatusResponseDTO> addNewStatus(@RequestBody @Valid StatusRequestDTO statusDTO) {
+    public ResponseEntity<StatusResponseDetailDTO> addNewStatus(@RequestBody @Valid StatusRequestDTO statusDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(statusService.createNewStatus(statusDTO));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<StatusResponseDTO> updateStatus(@PathVariable Integer id,
+    public ResponseEntity<StatusResponseDetailDTO> updateStatus(@PathVariable Integer id,
                                                           @RequestBody @Valid StatusRequestDTO statusDTO) {
         return ResponseEntity.status(HttpStatus.OK).body(statusService.updateStatus(id, statusDTO));
     }
