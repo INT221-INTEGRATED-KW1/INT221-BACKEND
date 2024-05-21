@@ -1,5 +1,6 @@
 package sit.int221.integratedproject.kanbanborad.dtos.request;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -11,11 +12,12 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TaskRequestDTO {
     @NotNull
-    @Size(min = 1, max = 100)
+    @Size(min = 0, max = 100)
+    @NotBlank
     private String title;
-    @Size(min = 1, max = 500)
+    @Size(min = 0, max = 500)
     private String description;
-    @Size(min = 1, max = 30)
+    @Size(min = 0, max = 30)
     private String assignees;
     @NotNull
     private Integer status;

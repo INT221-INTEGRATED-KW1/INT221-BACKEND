@@ -2,6 +2,7 @@ package sit.int221.integratedproject.kanbanborad.entities;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
@@ -18,11 +19,12 @@ public class Task {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     @NotNull
-    @Size(min = 1, max = 100)
+    @Size(min = 0, max = 100)
+    @NotBlank
     private String title;
-    @Size(min = 1, max = 500)
+    @Size(min = 0, max = 500)
     private String description;
-    @Size(min = 1, max = 30)
+    @Size(min = 0, max = 30)
     private String assignees;
     @NotNull
     @ManyToOne
