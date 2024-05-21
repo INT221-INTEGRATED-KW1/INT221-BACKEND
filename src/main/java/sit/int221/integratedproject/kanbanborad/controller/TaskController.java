@@ -23,18 +23,18 @@ public class TaskController {
     @GetMapping("")
     public ResponseEntity<List<TaskResponseDTO>> getAllTask(@RequestParam(required = false) String sortBy,
                                                             @RequestParam(required = false) String[] filterStatuses) {
-        List<TaskResponseDTO> tasts;
+        List<TaskResponseDTO> tasks;
         if (sortBy == null && filterStatuses == null) {
-            tasts = taskService.findAllTask();
+            tasks = taskService.findAllTask();
         } else if (sortBy != null && filterStatuses == null) {
-            tasts = taskService.findAllTaskSorted(sortBy);
+            tasks = taskService.findAllTaskSorted(sortBy);
         } else if (sortBy == null && filterStatuses != null) {
             System.out.println("test");
-            tasts = taskService.findAllTaskFiltered(filterStatuses);
+            tasks = taskService.findAllTaskFiltered(filterStatuses);
         } else {
-            tasts = taskService.findAllTaskSortedAndFiltered(sortBy, filterStatuses);
+            tasks = taskService.findAllTaskSortedAndFiltered(sortBy, filterStatuses);
         }
-        return ResponseEntity.status(HttpStatus.OK).body(tasts);
+        return ResponseEntity.status(HttpStatus.OK).body(tasks);
     }
 
     @GetMapping("/{id}")

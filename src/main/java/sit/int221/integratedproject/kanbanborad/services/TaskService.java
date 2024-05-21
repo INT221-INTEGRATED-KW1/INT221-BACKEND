@@ -106,7 +106,7 @@ public class TaskService {
 
     private void checkStatusLimit(Status status) {
         StatusLimit statusLimit = statusLimitRepository.findById(Utils.STATUS_LIMIT)
-                .orElseThrow(() -> new ItemNotFoundException("StatusLimit Id " + Utils.STATUS_LIMIT + " DOES NOT EXIST !!!"));
+                .orElseThrow(() -> new BadRequestException("StatusLimit Id " + Utils.STATUS_LIMIT + " DOES NOT EXIST !!!"));
         boolean isSpecialStatus = status.getName().equals(Utils.NO_STATUS) || status.getName().equals(Utils.DONE);
         if (statusLimit.getStatusLimit() && !isSpecialStatus &&status.getTasks().size() >= Utils.MAX_SIZE) {
             throw new BadRequestException("Status limit exceeded.");

@@ -50,7 +50,7 @@ public class StatusController {
     public ResponseEntity<StatusResponseDTO> removeStatusAndTransferName(@PathVariable Integer id,
                                                                          @PathVariable Integer newId) {
         if (id.equals(newId)) {
-            throw new BadRequestException("destination status for task transfer not specified");
+            throw new BadRequestException("destination status for task transfer must be different from current status.");
         }
         return ResponseEntity.status(HttpStatus.OK).body(statusService.deleteTaskAndTransferStatus(id, newId));
     }
