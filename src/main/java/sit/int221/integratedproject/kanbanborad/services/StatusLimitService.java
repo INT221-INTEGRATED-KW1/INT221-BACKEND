@@ -49,7 +49,9 @@ public class StatusLimitService {
         List<StatusResponseDetailDTO> statusResponseDTOs = new ArrayList<>();
         List<Status> statuses = statusRepository.findAll();
         for (Status status : statuses) {
-            if (status.getTasks().size() >= Utils.MAX_SIZE) {
+            if (status.getTasks().size() >= Utils.MAX_SIZE &&
+                    !status.getName().equals(Utils.NO_STATUS) &&
+                    !status.getName().equals(Utils.DONE)) {
                 StatusResponseDetailDTO statusResponseDTO = modelMapper.map(status, StatusResponseDetailDTO.class);
                 statusResponseDTO.setNoOfTasks(status.getTasks().size());
                 statusResponseDTOs.add(statusResponseDTO);

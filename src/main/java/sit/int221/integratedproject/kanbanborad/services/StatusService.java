@@ -11,6 +11,7 @@ import sit.int221.integratedproject.kanbanborad.entities.Status;
 import sit.int221.integratedproject.kanbanborad.entities.StatusLimit;
 import sit.int221.integratedproject.kanbanborad.entities.Task;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
+import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.StatusLimitRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.StatusRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.TaskRepository;
@@ -76,6 +77,9 @@ public class StatusService {
     public StatusResponseDTO deleteStatus(Integer id) {
         Status statusToDelete = findStatusByIdAndValidate(id);
         validateStatusDeletion(statusToDelete);
+        if (!statusToDelete.getTasks().isEmpty()) {
+            throw new BadRequestException("Destination status for task transfer not specified.");
+        }
         statusRepository.deleteById(id);
         return modelMapper.map(statusToDelete, StatusResponseDTO.class);
     }
@@ -93,7 +97,7 @@ public class StatusService {
 
     private Status findStatusByIdAndValidate(Integer id) {
         return statusRepository.findById(id)
-                .orElseThrow(() -> new BadRequestException("Status Id " + id + " DOES NOT EXIST !!!"));
+                .orElseThrow(() -> new ItemNotFoundException("Status Id " + id + " DOES NOT EXIST !!!"));
     }
 
     private void validateStatusModification(Status status) {
@@ -111,9 +115,6 @@ public class StatusService {
         }
         if (status.getName().equals(Utils.DONE)) {
             throw new BadRequestException("Done cannot be deleted");
-        }
-        if (!status.getTasks().isEmpty()) {
-            throw new BadRequestException("Destination status for task transfer not specified.");
         }
     }
 
