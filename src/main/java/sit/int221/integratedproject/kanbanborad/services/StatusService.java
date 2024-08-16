@@ -12,9 +12,9 @@ import sit.int221.integratedproject.kanbanborad.entities.StatusLimit;
 import sit.int221.integratedproject.kanbanborad.entities.Task;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
-import sit.int221.integratedproject.kanbanborad.repositories.StatusLimitRepository;
-import sit.int221.integratedproject.kanbanborad.repositories.StatusRepository;
-import sit.int221.integratedproject.kanbanborad.repositories.TaskRepository;
+import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.StatusLimitRepository;
+import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.StatusRepository;
+import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.TaskRepository;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
 import java.util.ArrayList;
@@ -137,7 +137,7 @@ public class StatusService {
         if (totalTasksAfterTransfer > Utils.MAX_SIZE && !isSpecialStatus && statusLimit.getStatusLimit()) {
             throw new BadRequestException("Cannot transfer status; limit exceeded.");
         }
-    }
+    }   
 
     private StatusResponseDetailDTO convertToDetailDTO(Status status) {
         StatusResponseDetailDTO dto = modelMapper.map(status, StatusResponseDetailDTO.class);

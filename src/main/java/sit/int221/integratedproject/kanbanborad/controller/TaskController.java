@@ -29,7 +29,6 @@ public class TaskController {
         } else if (sortBy != null && filterStatuses == null) {
             tasks = taskService.findAllTaskSorted(sortBy);
         } else if (sortBy == null && filterStatuses != null) {
-            System.out.println("test");
             tasks = taskService.findAllTaskFiltered(filterStatuses);
         } else {
             tasks = taskService.findAllTaskSortedAndFiltered(sortBy, filterStatuses);

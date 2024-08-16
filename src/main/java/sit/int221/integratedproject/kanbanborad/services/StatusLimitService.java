@@ -10,8 +10,8 @@ import sit.int221.integratedproject.kanbanborad.dtos.response.StatusResponseDeta
 import sit.int221.integratedproject.kanbanborad.entities.Status;
 import sit.int221.integratedproject.kanbanborad.entities.StatusLimit;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
-import sit.int221.integratedproject.kanbanborad.repositories.StatusLimitRepository;
-import sit.int221.integratedproject.kanbanborad.repositories.StatusRepository;
+import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.StatusLimitRepository;
+import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.StatusRepository;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
 import java.util.ArrayList;
