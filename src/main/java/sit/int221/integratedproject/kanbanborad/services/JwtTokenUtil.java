@@ -3,6 +3,8 @@ package sit.int221.integratedproject.kanbanborad.services;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -11,6 +13,7 @@ import sit.int221.integratedproject.kanbanborad.entities.User;
 import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;
 
 import java.io.Serializable;
+import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,7 +25,7 @@ public class JwtTokenUtil implements Serializable {
     private String SECRET_KEY;
     @Value("#{${jwt.max-token-interval-hour}*60*60*1000}")
     private long JWT_TOKEN_VALIDITY;
-    SignatureAlgorithm signatureAlgorithm = SignatureAlgorithm.HS256;
+    private final SignatureAlgorithm signatureAlgorithm = SignatureAlgorithm.HS256;
     private final UserRepository userRepository;
     private final String ISSUER = "https://intproj23.sit.kmutt.ac.th/kw1/";
 
@@ -44,7 +47,7 @@ public class JwtTokenUtil implements Serializable {
     }
 
     public Claims getAllClaimsFromToken(String token) {
-        Claims claims = Jwts.parser().setSigningKey(SECRET_KEY).parseClaimsJws(token).getBody();
+        Claims claims = Jwts.parser().setSigningKey(getSignInKey()).parseClaimsJws(token).getBody();
         return claims;
     }
 
@@ -70,12 +73,18 @@ public class JwtTokenUtil implements Serializable {
                 .setClaims(claims)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + JWT_TOKEN_VALIDITY))
-                .signWith(signatureAlgorithm, SECRET_KEY).compact();
+                .signWith(signatureAlgorithm, getSignInKey()).compact();
     }
 
     public Boolean validateToken(String token, UserDetails userDetails) {
         final String username = getUsernameFromToken(token);
         return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    }
+
+
+    private Key getSignInKey() {
+        byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 }
 
