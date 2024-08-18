@@ -1,4 +1,4 @@
-package sit.int221.integratedproject.kanbanborad.repositories;
+package sit.int221.integratedproject.kanbanborad.repositories.kanbanboard;
 
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
