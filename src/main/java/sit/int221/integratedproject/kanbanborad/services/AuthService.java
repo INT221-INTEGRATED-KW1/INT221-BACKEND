@@ -26,7 +26,7 @@ public class AuthService {
     @Transactional
     public LoginResponseDTO login(JwtRequestUser body) {
         try {
-            var authInfo = new UsernamePasswordAuthenticationToken(body.getUsername(), body.getPassword());
+            var authInfo = new UsernamePasswordAuthenticationToken(body.getUserName(), body.getPassword());
             var authentication = authenticationManager.authenticate(authInfo);
             var authenticatedUser = (AuthenticateUser) authentication.getPrincipal();
             var now = Instant.now();
