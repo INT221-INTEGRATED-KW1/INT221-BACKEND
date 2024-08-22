@@ -1,7 +1,7 @@
 package sit.int221.integratedproject.kanbanborad.repositories.itbkkshared;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import sit.int221.integratedproject.kanbanborad.entities.User;
+import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
 
 import java.util.Optional;
 

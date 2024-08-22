@@ -26,24 +26,24 @@ import javax.sql.DataSource;
 public class itbkksharedDataSourceConfig {
     @Bean(name = "itbkksharedDataSource")
     @ConfigurationProperties(prefix = "spring.datasource.itbkkshared")
-    public DataSource itbkk_sharedDataSource() {
+    public DataSource itbkksharedDataSource() {
         return DataSourceBuilder.create().build();
     }
 
     @Bean(name = "itbkksharedEntityManagerFactory")
-    public LocalContainerEntityManagerFactoryBean testUserEntityManagerFactory(
+    public LocalContainerEntityManagerFactoryBean itbkksharedEntityManagerFactory(
             EntityManagerFactoryBuilder builder,
-            @Qualifier("itbkksharedDataSource") DataSource testUserDataSource) {
+            @Qualifier("itbkksharedDataSource") DataSource itbkksharedDataSource) {
         return builder
-                .dataSource(testUserDataSource)
+                .dataSource(itbkksharedDataSource)
                 .packages("sit.int221.integratedproject.kanbanborad.entities")
                 .persistenceUnit("itbkkshared")
                 .build();
     }
 
     @Bean(name = "itbkksharedTransactionManager")
-    public PlatformTransactionManager testUserTransactionManager(
-            @Qualifier("itbkksharedEntityManagerFactory") EntityManagerFactory testUserEntityManagerFactory) {
-        return new JpaTransactionManager(testUserEntityManagerFactory);
+    public PlatformTransactionManager itbkksharedTransactionManager(
+            @Qualifier("itbkksharedEntityManagerFactory") EntityManagerFactory itbkksharedEntityManagerFactory) {
+        return new JpaTransactionManager(itbkksharedEntityManagerFactory);
     }
 }

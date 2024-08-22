@@ -8,7 +8,7 @@ import sit.int221.integratedproject.kanbanborad.services.AuthService;
 
 @RestController
 @RequestMapping("/v2/users")
-@CrossOrigin(origins = "http://localhost")
+@CrossOrigin(origins = {"http://ip23kw1.sit.kmutt.ac.th", "http://intproj23.sit.kmutt.ac.th"})
 public class AuthController {
     private final AuthService authService;
 

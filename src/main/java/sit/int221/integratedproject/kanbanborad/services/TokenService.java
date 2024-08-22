@@ -3,18 +3,18 @@ package sit.int221.integratedproject.kanbanborad.services;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
 import sit.int221.integratedproject.kanbanborad.dtos.response.AuthenticateUser;
-import sit.int221.integratedproject.kanbanborad.entities.User;
+import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
 import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;
 
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.stream.Collectors;
 
 @Service
 public class TokenService {
@@ -64,15 +64,19 @@ public class TokenService {
                 .expiresAt(expire)
                 .build();
 
-        return encodeClaimToJwt(claims);
+        JwsHeader headers = JwsHeader.with(() -> "RS256")
+                .type("JWT")
+                .build();
+
+        return encodeClaimToJwt(headers, claims);
     }
 
     public String generateToken(AuthenticateUser auth, Instant issueDate, long expiredInSeconds) {
         return generateToken(auth.oid(), auth.getAuthorities(), issueDate, expiredInSeconds);
     }
 
-    public String encodeClaimToJwt(JwtClaimsSet claims) {
-        return jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
+    public String encodeClaimToJwt(JwsHeader headers, JwtClaimsSet claims) {
+        return jwtEncoder.encode(JwtEncoderParameters.from(headers,claims)).getTokenValue();
     }
 
 }
