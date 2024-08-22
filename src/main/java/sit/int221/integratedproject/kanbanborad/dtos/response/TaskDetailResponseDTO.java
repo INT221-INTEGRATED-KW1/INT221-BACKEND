@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import sit.int221.integratedproject.kanbanborad.entities.Status;
+import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Status;
 
 import java.sql.Timestamp;
 

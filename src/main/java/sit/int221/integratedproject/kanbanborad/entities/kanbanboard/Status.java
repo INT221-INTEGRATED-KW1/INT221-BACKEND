@@ -1,4 +1,4 @@
-package sit.int221.integratedproject.kanbanborad.entities;
+package sit.int221.integratedproject.kanbanborad.entities.kanbanboard;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;

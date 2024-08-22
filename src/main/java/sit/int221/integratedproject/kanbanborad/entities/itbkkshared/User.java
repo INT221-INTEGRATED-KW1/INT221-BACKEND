@@ -1,4 +1,4 @@
-package sit.int221.integratedproject.kanbanborad.entities;
+package sit.int221.integratedproject.kanbanborad.entities.itbkkshared;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;

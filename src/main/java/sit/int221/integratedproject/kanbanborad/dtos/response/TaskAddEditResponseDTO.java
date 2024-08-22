@@ -1,7 +1,7 @@
 package sit.int221.integratedproject.kanbanborad.dtos.response;
 
 import lombok.Data;
-import sit.int221.integratedproject.kanbanborad.entities.Status;
+import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Status;
 
 @Data
 public class TaskAddEditResponseDTO {

@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
-import sit.int221.integratedproject.kanbanborad.entities.User;
+import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
 import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;
 
 import java.io.Serializable;
