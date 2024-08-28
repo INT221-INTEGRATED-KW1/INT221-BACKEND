@@ -6,9 +6,11 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
+import sit.int221.integratedproject.kanbanborad.dtos.response.AuthenticateUser;
 import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
 import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;
 
@@ -33,8 +35,8 @@ public class JwtTokenUtil implements Serializable {
         this.userRepository = userRepository;
     }
 
-    public String getUsernameFromToken(String token) {
-        return getClaimFromToken(token, Claims::getSubject);
+    public String getOidFromToken(String token) {
+        return getClaimFromToken(token, claims -> claims.get("oid", String.class));
     }
 
     public Date getExpirationDateFromToken(String token) {
@@ -51,18 +53,19 @@ public class JwtTokenUtil implements Serializable {
         return claims;
     }
 
-    private Boolean isTokenExpired(String token) {
+    public Boolean isTokenExpired(String token) {
         final Date expiration = getExpirationDateFromToken(token);
         return expiration.before(new Date());
     }
 
-    public String generateToken(UserDetails userDetails) {
+    public String generateToken(Authentication authentication) {
         Map<String, Object> claims = new HashMap<>();
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                        .orElseThrow(() -> new UsernameNotFoundException("not found"));
+        var authenticatedUser = (AuthenticateUser) authentication.getPrincipal();
+        User user = userRepository.findById(authenticatedUser.oid())
+                .orElseThrow(() -> new UsernameNotFoundException("not found"));
         claims.put("iss", ISSUER);
         claims.put("name", user.getName());
-        claims.put("oid", user.getOid());
+        claims.put("oid", user.getOid());  // เก็บ oid ใน claims
         claims.put("email", user.getEmail());
         claims.put("role", user.getRole().name());
         return doGenerateToken(claims);
@@ -76,9 +79,9 @@ public class JwtTokenUtil implements Serializable {
                 .signWith(signatureAlgorithm, getSignInKey()).compact();
     }
 
-    public Boolean validateToken(String token, UserDetails userDetails) {
-        final String username = getUsernameFromToken(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    public Boolean validateToken(String token, AuthenticateUser userDetails) {
+        final String oid = getOidFromToken(token);
+        return (oid.equals(userDetails.oid()) && !isTokenExpired(token));
     }
 
     private Key getSignInKey() {

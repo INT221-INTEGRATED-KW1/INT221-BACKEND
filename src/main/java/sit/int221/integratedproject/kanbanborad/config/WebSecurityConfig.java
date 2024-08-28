@@ -14,6 +14,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 //import sit.int221.integratedproject.kanbanborad.filter.JwtAuthFilter;
+//import sit.int221.integratedproject.kanbanborad.filter.JwtAuthFilter;
+import sit.int221.integratedproject.kanbanborad.filter.JwtAuthFilter;
 import sit.int221.integratedproject.kanbanborad.services.JwtUserDetailsService;
 
 import static org.springframework.security.config.Customizer.withDefaults;
@@ -21,21 +23,18 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @Configuration
 @EnableWebSecurity
 public class WebSecurityConfig {
-//    @Autowired
-//    private JwtAuthFilter jwtAuthFilter;
+    @Autowired
+    private JwtAuthFilter jwtAuthFilter;
     @Autowired
     private JwtUserDetailsService jwtUserDetailsService;
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity.csrf(csrf -> csrf.disable())
                 .authorizeRequests(authorize -> authorize
-//                        .requestMatchers("/authentications/login").permitAll()
-//                        .requestMatchers("/api/customers/**").permitAll()
-//                        .requestMatchers("/authentications/validate-token").hasAuthority("ADMIN")
-//                        .anyRequest().authenticated())
-                        .anyRequest().permitAll())
+                        .requestMatchers("/v2/users/login").permitAll()
+                        .anyRequest().authenticated())
                 .httpBasic(withDefaults());
-//        httpSecurity.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+        httpSecurity.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return httpSecurity.build();
     }
     @Bean

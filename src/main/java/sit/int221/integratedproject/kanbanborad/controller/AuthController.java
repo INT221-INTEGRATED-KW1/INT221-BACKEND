@@ -34,11 +34,12 @@ public class AuthController {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(jwtRequestUser.getUserName(), jwtRequestUser.getPassword())
             );
-            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+//            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
             //        UserDetails userDetails = jwtUserDetailsService.loadUserByUsername(jwtRequestUser.getUserName());
-            String token = jwtTokenUtil.generateToken(userDetails);
+            String token = jwtTokenUtil.generateToken(authentication);
             return ResponseEntity.ok(new LoginResponseDTO(token));
         } catch (AuthenticationException e) {
+            System.out.println(jwtRequestUser);
              throw new UsernameNotFoundException("Username or Password is incorrect");
         } catch (Exception e) {
             throw new GeneralException("There is a problem. Please try again later.");

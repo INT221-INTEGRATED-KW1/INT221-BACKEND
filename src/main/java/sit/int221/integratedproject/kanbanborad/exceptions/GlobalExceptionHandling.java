@@ -1,5 +1,6 @@
 package sit.int221.integratedproject.kanbanborad.exceptions;
 
+import io.jsonwebtoken.MalformedJwtException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.server.ResponseStatusException;
 
 
 @RestControllerAdvice
@@ -92,9 +94,20 @@ public class GlobalExceptionHandling {
     }
 
     @ExceptionHandler(AuthenticationException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ResponseEntity<ErrorResponse> handleUnAuthorizationException(AuthenticationException exception, WebRequest request) {
         return buildErrorResponse(exception, exception.getMessage(), HttpStatus.UNAUTHORIZED, request);
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ResponseEntity<ErrorResponse> handleUnAuthorizationException(ResponseStatusException exception, WebRequest request) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.UNAUTHORIZED.value(),
+                exception.getReason(),
+                request.getDescription(false)
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
     }
 
     private ResponseEntity<ErrorResponse> buildErrorResponse(
