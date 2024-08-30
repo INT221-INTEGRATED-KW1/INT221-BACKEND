@@ -32,6 +32,10 @@ public record AuthenticateUser(
         return this.username;
     }
 
+    public String getOid() {
+        return this.oid;
+    }
+
     @Override
     public boolean isAccountNonExpired() {
         return true;

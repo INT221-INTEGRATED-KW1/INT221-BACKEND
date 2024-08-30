@@ -9,53 +9,57 @@ import sit.int221.integratedproject.kanbanborad.dtos.request.TaskRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskAddEditResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskDetailResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
-import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
 import sit.int221.integratedproject.kanbanborad.services.TaskService;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/v2/tasks")
+@RequestMapping("/v3/boards")
 @CrossOrigin(origins = "http://localhost")
 public class TaskController {
     @Autowired
     private TaskService taskService;
 
-    @GetMapping("")
+    @GetMapping("/{id}/tasks")
     public ResponseEntity<List<TaskResponseDTO>> getAllTask(@RequestParam(required = false) String sortBy,
-                                                            @RequestParam(required = false) String[] filterStatuses) {
+                                                            @RequestParam(required = false) String[] filterStatuses,
+                                                            @PathVariable String id
+    ) {
         List<TaskResponseDTO> tasks;
         if (sortBy == null && filterStatuses == null) {
-            tasks = taskService.findAllTask();
+            tasks = taskService.findAllTask(id);
         } else if (sortBy != null && filterStatuses == null) {
-            tasks = taskService.findAllTaskSorted(sortBy);
+            tasks = taskService.findAllTaskSorted(sortBy, id);
         } else if (sortBy == null && filterStatuses != null) {
-            tasks = taskService.findAllTaskFiltered(filterStatuses);
+            tasks = taskService.findAllTaskFiltered(filterStatuses, id);
         } else {
-            tasks = taskService.findAllTaskSortedAndFiltered(sortBy, filterStatuses);
+            tasks = taskService.findAllTaskSortedAndFiltered(sortBy, filterStatuses, id);
         }
         return ResponseEntity.status(HttpStatus.OK).body(tasks);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<TaskDetailResponseDTO> getTaskById(@PathVariable Integer id) {
-        return ResponseEntity.status(HttpStatus.OK).body(taskService.findTaskById(id));
+    @GetMapping("/{id}/tasks/{taskId}")
+    public ResponseEntity<TaskDetailResponseDTO> getTaskById(@PathVariable String id,
+                                                             @PathVariable Integer taskId) {
+        return ResponseEntity.status(HttpStatus.OK).body(taskService.findTaskById(id, taskId));
     }
 
-    @PostMapping("")
-    public ResponseEntity<TaskAddEditResponseDTO> addNewTask(@RequestBody @Valid TaskRequestDTO taskDTO) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(taskService.createNewTask(taskDTO));
+    @PostMapping("/{id}/tasks")
+    public ResponseEntity<TaskAddEditResponseDTO> addNewTask(@RequestBody @Valid TaskRequestDTO taskDTO,
+                                                             @PathVariable String id) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(taskService.createNewTask(taskDTO, id));
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<TaskAddEditResponseDTO> updateTask(@PathVariable Integer id, @RequestBody @Valid TaskRequestDTO taskDTO) {
-        return ResponseEntity.status(HttpStatus.OK).body(taskService.updateTask(id, taskDTO));
+    @PutMapping("/{id}/tasks/{taskId}")
+    public ResponseEntity<TaskAddEditResponseDTO> updateTask(@PathVariable String id,
+                                                             @RequestBody @Valid TaskRequestDTO taskDTO,
+                                                             @PathVariable Integer taskId) {
+        return ResponseEntity.status(HttpStatus.OK).body(taskService.updateTask(id, taskDTO, taskId));
     }
 
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<TaskResponseDTO> removeTask(@PathVariable Integer id) {
-        return ResponseEntity.status(HttpStatus.OK).body(taskService.deleteTask(id));
+    @DeleteMapping("/{id}/tasks/{taskId}")
+    public ResponseEntity<TaskResponseDTO> removeTask(@PathVariable String id, @PathVariable Integer taskId) {
+        return ResponseEntity.status(HttpStatus.OK).body(taskService.deleteTask(id, taskId));
     }
 
 }

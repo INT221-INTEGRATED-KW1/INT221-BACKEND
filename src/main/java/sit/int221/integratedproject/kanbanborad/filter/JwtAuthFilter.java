@@ -83,8 +83,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             handleException(response, "JWT Token not well-formed", HttpStatus.UNAUTHORIZED, request.getRequestURI());
         } catch (TokenIsMissingException e) {
             handleException(response, "JWT Token is missing", HttpStatus.UNAUTHORIZED, request.getRequestURI());
-        } catch (Exception e) {
-            handleException(response, "An error occurred during JWT processing", HttpStatus.INTERNAL_SERVER_ERROR, request.getRequestURI());
+        } catch (SignatureException e) {
+            handleException(response, "JWT Token has been tampered with", HttpStatus.UNAUTHORIZED, request.getRequestURI());
         }
     }
 

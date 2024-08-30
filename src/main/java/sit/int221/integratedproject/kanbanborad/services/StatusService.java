@@ -7,12 +7,12 @@ import org.springframework.stereotype.Service;
 import sit.int221.integratedproject.kanbanborad.dtos.request.StatusRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusResponseDetailDTO;
+import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Status;
-import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.StatusLimit;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Task;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
-import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.StatusLimitRepository;
+import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.StatusRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.TaskRepository;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
@@ -24,20 +24,21 @@ import java.util.List;
 public class StatusService {
     private final TaskRepository taskRepository;
     private final StatusRepository statusRepository;
-    private final StatusLimitRepository statusLimitRepository;
     private final ModelMapper modelMapper;
+    private final BoardRepository boardRepository;
 
     @Autowired
-    public StatusService(TaskRepository taskRepository, StatusRepository statusRepository,
-                         StatusLimitRepository statusLimitRepository, ModelMapper modelMapper) {
+    public StatusService(TaskRepository taskRepository, StatusRepository statusRepository
+                        ,ModelMapper modelMapper, BoardRepository boardRepository) {
         this.taskRepository = taskRepository;
         this.statusRepository = statusRepository;
-        this.statusLimitRepository = statusLimitRepository;
         this.modelMapper = modelMapper;
+        this.boardRepository = boardRepository;
     }
 
-    public List<StatusResponseDetailDTO> findAllStatus() {
-        List<Status> statuses = statusRepository.findAll();
+    public List<StatusResponseDetailDTO> findAllStatus(String id) {
+        Board board = findBoardByIdAndValidate(id);
+        List<Status> statuses = board.getStatuses();
         List<StatusResponseDetailDTO> statusResponseDTOs = new ArrayList<>();
         for (Status status : statuses) {
             StatusResponseDetailDTO statusResponseDTO = modelMapper.map(status, StatusResponseDetailDTO.class);
@@ -47,48 +48,78 @@ public class StatusService {
         return statusResponseDTOs;
     }
 
-    public StatusResponseDTO findStatusById(Integer id) {
-        Status status = findStatusByIdAndValidate(id);
+    public StatusResponseDTO findStatusById(String id, Integer statusId) {
+        Board board = boardRepository.findById(id)
+                .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
+        Status status = statusRepository.findStatusByIdAndBoardId(statusId, id);
+        if (status == null) {
+            throw new ItemNotFoundException("Status Id " + statusId + " does not belong to Board Id " + id);
+        }
         return modelMapper.map(status, StatusResponseDTO.class);
     }
 
     @Transactional
-    public StatusResponseDetailDTO createNewStatus(StatusRequestDTO statusDTO) {
+    public StatusResponseDetailDTO createNewStatus(StatusRequestDTO statusDTO, String id) {
+        Board board = findBoardByIdAndValidate(id);
         Status status = new Status();
-        return saveStatus(statusDTO, status);
+        return saveStatus(statusDTO, status, board);
     }
 
     @Transactional
-    public StatusResponseDetailDTO updateStatus(Integer id, StatusRequestDTO statusDTO) {
-        Status existingStatus = findStatusByIdAndValidate(id);
+    public StatusResponseDetailDTO updateStatus(String id, StatusRequestDTO statusDTO, Integer statusId) {
+        Board board = findBoardByIdAndValidate(id);
+        Status existingStatus = findStatusByIdAndValidate(statusId);
+        if (!existingStatus.getBoard().getId().equals(id)) {
+            throw new ItemNotFoundException("Status Id " + statusId + " does not belong to Board Id " + id);
+        }
         validateStatusModification(existingStatus);
-        return saveStatus(statusDTO, existingStatus);
+        return saveStatus(statusDTO, existingStatus, board);
     }
 
-    private StatusResponseDetailDTO saveStatus(StatusRequestDTO statusDTO, Status status) {
+    private StatusResponseDetailDTO saveStatus(StatusRequestDTO statusDTO, Status status, Board board) {
         status.setName(Utils.trimString(statusDTO.getName()));
         status.setDescription(Utils.checkAndSetDefaultNull(statusDTO.getDescription()));
         status.setColor(Utils.trimString(statusDTO.getColor()));
+        status.setBoard(board);
         Status savedStatus = statusRepository.save(status);
         return convertToDetailDTO(savedStatus);
     }
 
     @Transactional
-    public StatusResponseDTO deleteStatus(Integer id) {
-        Status statusToDelete = findStatusByIdAndValidate(id);
+    public StatusResponseDTO deleteStatus(String id, Integer statusId) {
+        if (!boardRepository.existsById(id)) {
+            throw new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!");
+        }
+        if (!statusRepository.existsById(statusId)) {
+            throw new ItemNotFoundException("Status Id " + statusId + " DOES NOT EXIST !!!");
+        }
+        Status statusToDelete = statusRepository.findStatusByIdAndBoardId(statusId, id);
+        if (statusToDelete == null) {
+            throw new ItemNotFoundException("Status Id " + statusId + " does not belong to Board Id " + id);
+        }
         validateStatusDeletion(statusToDelete);
         if (!statusToDelete.getTasks().isEmpty()) {
             throw new BadRequestException("Destination status for task transfer not specified.");
         }
-        statusRepository.deleteById(id);
+        statusRepository.deleteById(statusId);
         return modelMapper.map(statusToDelete, StatusResponseDTO.class);
     }
 
     @Transactional
-    public StatusResponseDTO deleteTaskAndTransferStatus(Integer id, Integer newId) {
-        Status statusToDelete = findStatusByIdAndValidate(id);
-        Status transferStatus = statusRepository.findById(newId)
-                .orElseThrow(() -> new BadRequestException("the specified status for task transfer does not exist"));
+    public StatusResponseDTO deleteTaskAndTransferStatus(String id, Integer oldId, Integer newId) {
+        if (!boardRepository.existsById(id)) {
+            throw new BadRequestException("Board Id " + id + " DOES NOT EXIST !!!");
+        }
+        Status statusToDelete = statusRepository.findStatusByIdAndBoardId(oldId, id);
+        Status transferStatus = statusRepository.findStatusByIdAndBoardId(newId, id);
+
+        if (statusToDelete == null) {
+            throw new ItemNotFoundException("Status Id " + oldId + " DOES NOT EXIST !!!");
+        }
+        if (transferStatus == null) {
+            throw new ItemNotFoundException("Status Id " + newId + " DOES NOT EXIST !!!");
+        }
+
         validateStatusDeletion(statusToDelete);
         transferTasks(statusToDelete, transferStatus);
         statusRepository.deleteById(statusToDelete.getId());
@@ -130,11 +161,9 @@ public class StatusService {
 
     private void checkStatusLimit(Status status, int additionalTasks) {
         int totalTasksAfterTransfer = status.getTasks().size() + additionalTasks;
-        StatusLimit statusLimit = statusLimitRepository.findById(Utils.STATUS_LIMIT)
-                .orElseThrow(() -> new BadRequestException("StatusLimit Id " + Utils.STATUS_LIMIT + " DOES NOT EXIST !!!"));
 
         boolean isSpecialStatus = status.getName().equals(Utils.NO_STATUS) || status.getName().equals(Utils.DONE);
-        if (totalTasksAfterTransfer > Utils.MAX_SIZE && !isSpecialStatus && statusLimit.getStatusLimit()) {
+        if (totalTasksAfterTransfer > Utils.MAX_SIZE && !isSpecialStatus && status.getBoard().getLimitMaximumStatus()) {
             throw new BadRequestException("Cannot transfer status; limit exceeded.");
         }
     }   
@@ -143,5 +172,10 @@ public class StatusService {
         StatusResponseDetailDTO dto = modelMapper.map(status, StatusResponseDetailDTO.class);
         dto.setNoOfTasks(status.getTasks().size());
         return dto;
+    }
+
+    private Board findBoardByIdAndValidate(String id) {
+        return boardRepository.findById(id)
+                .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
     }
 }
