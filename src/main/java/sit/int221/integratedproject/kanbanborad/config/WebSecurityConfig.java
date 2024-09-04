@@ -23,15 +23,19 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @Configuration
 @EnableWebSecurity
 public class WebSecurityConfig {
-    @Autowired
-    private JwtAuthFilter jwtAuthFilter;
-    @Autowired
-    private JwtUserDetailsService jwtUserDetailsService;
+    private final JwtAuthFilter jwtAuthFilter;
+    private final JwtUserDetailsService jwtUserDetailsService;
+
+    public WebSecurityConfig(JwtAuthFilter jwtAuthFilter, JwtUserDetailsService jwtUserDetailsService) {
+        this.jwtAuthFilter = jwtAuthFilter;
+        this.jwtUserDetailsService = jwtUserDetailsService;
+    }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity.csrf(csrf -> csrf.disable())
                 .authorizeRequests(authorize -> authorize
-                        .requestMatchers("/v2/users/login").permitAll()
+                        .requestMatchers("/v3/users/login").permitAll()
                         .anyRequest().authenticated())
                 .httpBasic(withDefaults());
         httpSecurity.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

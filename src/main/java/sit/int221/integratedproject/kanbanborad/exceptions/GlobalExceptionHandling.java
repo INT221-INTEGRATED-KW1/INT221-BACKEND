@@ -1,6 +1,5 @@
 package sit.int221.integratedproject.kanbanborad.exceptions;
 
-import io.jsonwebtoken.MalformedJwtException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;

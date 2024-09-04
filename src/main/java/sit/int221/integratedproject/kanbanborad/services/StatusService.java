@@ -27,7 +27,6 @@ public class StatusService {
     private final ModelMapper modelMapper;
     private final BoardRepository boardRepository;
 
-    @Autowired
     public StatusService(TaskRepository taskRepository, StatusRepository statusRepository
                         ,ModelMapper modelMapper, BoardRepository boardRepository) {
         this.taskRepository = taskRepository;
@@ -87,16 +86,8 @@ public class StatusService {
 
     @Transactional
     public StatusResponseDTO deleteStatus(String id, Integer statusId) {
-        if (!boardRepository.existsById(id)) {
-            throw new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!");
-        }
-        if (!statusRepository.existsById(statusId)) {
-            throw new ItemNotFoundException("Status Id " + statusId + " DOES NOT EXIST !!!");
-        }
-        Status statusToDelete = statusRepository.findStatusByIdAndBoardId(statusId, id);
-        if (statusToDelete == null) {
-            throw new ItemNotFoundException("Status Id " + statusId + " does not belong to Board Id " + id);
-        }
+        Status statusToDelete = getStatusAndValidate(id, statusId);
+
         validateStatusDeletion(statusToDelete);
         if (!statusToDelete.getTasks().isEmpty()) {
             throw new BadRequestException("Destination status for task transfer not specified.");
@@ -107,23 +98,24 @@ public class StatusService {
 
     @Transactional
     public StatusResponseDTO deleteTaskAndTransferStatus(String id, Integer oldId, Integer newId) {
-        if (!boardRepository.existsById(id)) {
-            throw new BadRequestException("Board Id " + id + " DOES NOT EXIST !!!");
-        }
-        Status statusToDelete = statusRepository.findStatusByIdAndBoardId(oldId, id);
-        Status transferStatus = statusRepository.findStatusByIdAndBoardId(newId, id);
-
-        if (statusToDelete == null) {
-            throw new ItemNotFoundException("Status Id " + oldId + " DOES NOT EXIST !!!");
-        }
-        if (transferStatus == null) {
-            throw new ItemNotFoundException("Status Id " + newId + " DOES NOT EXIST !!!");
-        }
+        Status statusToDelete = getStatusAndValidate(id, oldId);
+        Status transferStatus = getStatusAndValidate(id, newId);
 
         validateStatusDeletion(statusToDelete);
         transferTasks(statusToDelete, transferStatus);
         statusRepository.deleteById(statusToDelete.getId());
         return modelMapper.map(transferStatus, StatusResponseDTO.class);
+    }
+
+    private Status getStatusAndValidate(String boardId, Integer statusId) {
+        if (!boardRepository.existsById(boardId)) {
+            throw new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!");
+        }
+        Status status = statusRepository.findStatusByIdAndBoardId(statusId, boardId);
+        if (status == null) {
+            throw new ItemNotFoundException("Status Id " + statusId + " does not belong to Board Id " + boardId);
+        }
+        return status;
     }
 
     private Status findStatusByIdAndValidate(Integer id) {

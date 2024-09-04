@@ -45,7 +45,7 @@ public class BoardService {
 
     public BoardResponseDTO getBoardById(Claims claims, String id) {
         Board board = boardRepository.findById(id)
-                .orElseThrow(() -> new  ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
+                .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
         String oid = (String) claims.get("oid");
         User user = userRepository.findById(oid)
                 .orElseThrow(() -> new ItemNotFoundException("User Id " + oid + " DOES NOT EXIST !!!"));

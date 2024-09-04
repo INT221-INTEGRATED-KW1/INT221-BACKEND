@@ -7,7 +7,6 @@ import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.context.annotation.Primary;
 import sit.int221.integratedproject.kanbanborad.enumeration.RoleEnum;
 
 @Entity

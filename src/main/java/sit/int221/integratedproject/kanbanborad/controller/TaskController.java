@@ -17,8 +17,11 @@ import java.util.List;
 @RequestMapping("/v3/boards")
 @CrossOrigin(origins = "http://localhost")
 public class TaskController {
-    @Autowired
-    private TaskService taskService;
+    private final TaskService taskService;
+
+    public TaskController(TaskService taskService) {
+        this.taskService = taskService;
+    }
 
     @GetMapping("/{id}/tasks")
     public ResponseEntity<List<TaskResponseDTO>> getAllTask(@RequestParam(required = false) String sortBy,

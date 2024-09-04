@@ -13,18 +13,18 @@ import sit.int221.integratedproject.kanbanborad.dtos.request.JwtRequestUser;
 import sit.int221.integratedproject.kanbanborad.dtos.response.LoginResponseDTO;
 import sit.int221.integratedproject.kanbanborad.exceptions.GeneralException;
 import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
-import sit.int221.integratedproject.kanbanborad.services.JwtUserDetailsService;
 
 @RestController
-@RequestMapping("/v2/users")
+@RequestMapping("/v3/users")
 @CrossOrigin(origins = "http://localhost")
 public class AuthController {
-    @Autowired
-    JwtUserDetailsService jwtUserDetailsService;
-    @Autowired
-    JwtTokenUtil jwtTokenUtil;
-    @Autowired
-    AuthenticationManager authenticationManager;
+    private final JwtTokenUtil jwtTokenUtil;
+    private final AuthenticationManager authenticationManager;
+
+    public AuthController(JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager) {
+        this.jwtTokenUtil = jwtTokenUtil;
+        this.authenticationManager = authenticationManager;
+    }
 
     @PostMapping("/login")
     public ResponseEntity<Object> login(@RequestBody @Valid JwtRequestUser jwtRequestUser) {
@@ -32,8 +32,6 @@ public class AuthController {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(jwtRequestUser.getUserName(), jwtRequestUser.getPassword())
             );
-//            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-            //        UserDetails userDetails = jwtUserDetailsService.loadUserByUsername(jwtRequestUser.getUserName());
             String token = jwtTokenUtil.generateToken(authentication);
             return ResponseEntity.ok(new LoginResponseDTO(token));
         } catch (AuthenticationException e) {

@@ -7,7 +7,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-import sit.int221.integratedproject.kanbanborad.dtos.response.AuthUser;
 import sit.int221.integratedproject.kanbanborad.dtos.response.AuthenticateUser;
 import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
 import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;

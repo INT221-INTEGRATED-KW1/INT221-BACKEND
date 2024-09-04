@@ -16,8 +16,11 @@ import java.util.List;
 @RequestMapping("/v3/boards")
 @CrossOrigin(origins = "http://localhost")
 public class StatusController {
-    @Autowired
-    private StatusService statusService;
+    private final StatusService statusService;
+
+    public StatusController(StatusService statusService) {
+        this.statusService = statusService;
+    }
 
     @GetMapping("/{id}/statuses")
     public ResponseEntity<List<StatusResponseDetailDTO>> getAllStatus(@PathVariable String id) {

@@ -26,10 +26,13 @@ import java.io.IOException;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
-    @Autowired
-    private JwtUserDetailsService jwtUserDetailsService;
-    @Autowired
-    private JwtTokenUtil jwtTokenUtil;
+    private final JwtUserDetailsService jwtUserDetailsService;
+    private final JwtTokenUtil jwtTokenUtil;
+
+    public JwtAuthFilter(JwtUserDetailsService jwtUserDetailsService, JwtTokenUtil jwtTokenUtil) {
+        this.jwtUserDetailsService = jwtUserDetailsService;
+        this.jwtTokenUtil = jwtTokenUtil;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -40,7 +43,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         // Skip JWT processing for certain endpoints
         String requestURI = request.getRequestURI();
-        if (requestURI.equals("/v2/users/login")) {
+        if (requestURI.equals("/v3/users/login")) {
             chain.doFilter(request, response);
             return;
         }
@@ -83,8 +86,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             handleException(response, "JWT Token not well-formed", HttpStatus.UNAUTHORIZED, request.getRequestURI());
         } catch (TokenIsMissingException e) {
             handleException(response, "JWT Token is missing", HttpStatus.UNAUTHORIZED, request.getRequestURI());
-        } catch (SignatureException e) {
-            handleException(response, "JWT Token has been tampered with", HttpStatus.UNAUTHORIZED, request.getRequestURI());
         }
     }
 

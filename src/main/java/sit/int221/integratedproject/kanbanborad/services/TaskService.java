@@ -26,76 +26,60 @@ import java.util.List;
 
 @Service
 public class TaskService {
-    @Autowired
-    private TaskRepository taskRepository;
-    @Autowired
-    private StatusRepository statusRepository;
-    @Autowired
-    private ModelMapper modelMapper;
-    @Autowired
-    private ListMapper listMapper;
-    @Autowired
-    private BoardRepository boardRepository;
+    private final TaskRepository taskRepository;
+    private final StatusRepository statusRepository;
+    private final ModelMapper modelMapper;
+    private final ListMapper listMapper;
+    private final BoardRepository boardRepository;
+
+    public TaskService(TaskRepository taskRepository, StatusRepository statusRepository, ModelMapper modelMapper, ListMapper listMapper, BoardRepository boardRepository) {
+        this.taskRepository = taskRepository;
+        this.statusRepository = statusRepository;
+        this.modelMapper = modelMapper;
+        this.listMapper = listMapper;
+        this.boardRepository = boardRepository;
+    }
 
     public List<TaskResponseDTO> findAllTask(String id) {
-        Board board = boardRepository.findById(id)
-                .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
-        ;
+        Board board = getBoardById(id);
         List<Task> tasks = board.getTasks();
         return listMapper.mapList(tasks, TaskResponseDTO.class);
     }
 
     public List<TaskResponseDTO> findAllTaskSorted(String sortBy, String id) {
-        if (!boardRepository.existsById(id)) {
-            throw new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!");
-        }
+        Board board = getBoardById(id);
         validateSortField(sortBy);
-
-        List<Task> tasks = taskRepository.findByBoardId(id, Sort.by(sortBy));
+        List<Task> tasks = taskRepository.findByBoardId(board.getId(), Sort.by(sortBy));
         return listMapper.mapList(tasks, TaskResponseDTO.class);
     }
 
     public List<TaskResponseDTO> findAllTaskFiltered(String[] filterStatuses, String id) {
-        if (!boardRepository.existsById(id)) {
-            throw new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!");
-        }
-        List<Task> tasks = taskRepository.findByBoardIdAndStatusNameIn(id, Arrays.asList(filterStatuses));
+        Board board = getBoardById(id);
+        List<Task> tasks = taskRepository.findByBoardIdAndStatusNameIn(board.getId(), Arrays.asList(filterStatuses));
         return listMapper.mapList(tasks, TaskResponseDTO.class);
     }
 
-    public List<TaskResponseDTO> findAllTaskSortedAndFiltered(String sortBy, String[] filterStatuses,
-                                                              String id) {
-        if (!boardRepository.existsById(id)) {
-            throw new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!");
-        }
+    public List<TaskResponseDTO> findAllTaskSortedAndFiltered(String sortBy, String[] filterStatuses, String id) {
+        Board board = getBoardById(id);
         validateSortField(sortBy);
-        List<Task> tasks = taskRepository.findByBoardIdAndStatusNameIn(id, Arrays.asList(filterStatuses), Sort.by(sortBy));
+        List<Task> tasks = taskRepository.findByBoardIdAndStatusNameIn(board.getId(), Arrays.asList(filterStatuses), Sort.by(sortBy));
         return listMapper.mapList(tasks, TaskResponseDTO.class);
     }
 
     public TaskDetailResponseDTO findTaskById(String id, Integer taskId) {
-        Board board = boardRepository.findById(id)
-                .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new ItemNotFoundException("Task Id " + taskId + " DOES NOT EXIST !!!"));
-
-        Task findTask = taskRepository.findTaskByIdAndBoardId(taskId, id);
-        if (findTask == null) {
-            throw new ItemNotFoundException("Task Id " + taskId + " does not belong to Board Id " + id);
-        }
-        return modelMapper.map(findTask, TaskDetailResponseDTO.class);
+        Board board = getBoardById(id);
+        Task task = getTaskById(taskId);
+        validateTaskBelongsToBoard(task, board.getId());
+        return modelMapper.map(task, TaskDetailResponseDTO.class);
     }
 
     @Transactional
     public TaskAddEditResponseDTO createNewTask(TaskRequestDTO taskDTO, String id) {
-        Status status = statusRepository.findById(taskDTO.getStatus())
-                .orElseThrow(() -> new FieldNotFoundException("status"));
-        Board board = boardRepository.findById(id)
-                .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
-        if (!status.getBoard().getId().equals(board.getId())) {
-            throw new BadRequestException("The status does not belong to the specified board.");
-        }
+        Status status = getStatusById(taskDTO.getStatus());
+        Board board = getBoardById(id);
+        validateStatusBelongsToBoard(status, board.getId());
         checkStatusLimit(status);
+
         Task task = new Task();
         populateTaskFromDTO(task, taskDTO, status, board);
         Task savedTask = taskRepository.save(task);
@@ -104,16 +88,12 @@ public class TaskService {
 
     @Transactional
     public TaskAddEditResponseDTO updateTask(String id, TaskRequestDTO taskDTO, Integer taskId) {
-        Board board = boardRepository.findById(id)
-                .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
-        Task existingTask = taskRepository.findById(taskId)
-                .orElseThrow(() -> new ItemNotFoundException("Task Id " + taskId + " DOES NOT EXIST !!!"));
-        Status status = statusRepository.findById(taskDTO.getStatus())
-                .orElseThrow(() -> new FieldNotFoundException("status"));
-        if (!status.getBoard().getId().equals(board.getId())) {
-            throw new BadRequestException("The status does not belong to the specified board.");
-        }
+        Board board = getBoardById(id);
+        Task existingTask = getTaskById(taskId);
+        Status status = getStatusById(taskDTO.getStatus());
+        validateStatusBelongsToBoard(status, board.getId());
         checkStatusLimit(status);
+
         populateTaskFromDTO(existingTask, taskDTO, status, board);
         Task updatedTask = taskRepository.save(existingTask);
         return modelMapper.map(updatedTask, TaskAddEditResponseDTO.class);
@@ -121,16 +101,9 @@ public class TaskService {
 
     @Transactional
     public TaskResponseDTO deleteTask(String id, Integer taskId) {
-        if (!boardRepository.existsById(id)) {
-            throw new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!");
-        }
-        if (!taskRepository.existsById(taskId)) {
-            throw new ItemNotFoundException("Task Id " + taskId + " DOES NOT EXIST !!!");
-        }
-        Task taskToDelete = taskRepository.findTaskByIdAndBoardId(taskId, id);
-        if (taskToDelete == null) {
-            throw new ItemNotFoundException("Task Id " + taskId + " does not belong to Board Id " + id);
-        }
+        Board board = getBoardById(id);
+        Task taskToDelete = getTaskById(taskId);
+        validateTaskBelongsToBoard(taskToDelete, board.getId());
         taskRepository.deleteById(taskId);
         return modelMapper.map(taskToDelete, TaskResponseDTO.class);
     }
@@ -138,7 +111,7 @@ public class TaskService {
     private void validateSortField(String sortBy) {
         List<String> validFields = Arrays.asList("status.name");
         if (!validFields.contains(sortBy)) {
-            throw new BadRequestException("invalid filter parameter");
+            throw new BadRequestException("Invalid filter parameter: " + sortBy);
         }
     }
 
@@ -155,6 +128,33 @@ public class TaskService {
         task.setAssignees(Utils.checkAndSetDefaultNull(taskDTO.getAssignees()));
         task.setStatus(status);
         task.setBoard(board);
+    }
+
+    private Board getBoardById(String boardId) {
+        return boardRepository.findById(boardId)
+                .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
+    }
+
+    private Task getTaskById(Integer taskId) {
+        return taskRepository.findById(taskId)
+                .orElseThrow(() -> new ItemNotFoundException("Task Id " + taskId + " DOES NOT EXIST !!!"));
+    }
+
+    private Status getStatusById(Integer statusId) {
+        return statusRepository.findById(statusId)
+                .orElseThrow(() -> new FieldNotFoundException("Status Id " + statusId + " DOES NOT EXIST !!!"));
+    }
+
+    private void validateTaskBelongsToBoard(Task task, String boardId) {
+        if (!task.getBoard().getId().equals(boardId)) {
+            throw new ItemNotFoundException("Task Id " + task.getId() + " does not belong to Board Id " + boardId);
+        }
+    }
+
+    private void validateStatusBelongsToBoard(Status status, String boardId) {
+        if (!status.getBoard().getId().equals(boardId)) {
+            throw new BadRequestException("The status does not belong to the specified board.");
+        }
     }
 
 }
