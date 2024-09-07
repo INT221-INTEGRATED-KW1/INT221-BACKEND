@@ -63,6 +63,7 @@ public class BoardService {
         Board board = new Board();
         board.setOid(oid);
         board.setName(boardRequestDTO.getName());
+        board.setLimitMaximumStatus(false);
         Board savedBoard = boardRepository.save(board);
 
         return getBoardResponseDTO(user, savedBoard);
