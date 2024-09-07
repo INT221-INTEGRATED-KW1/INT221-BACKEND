@@ -34,8 +34,22 @@ public class BoardController {
     }
 
     @GetMapping("")
-    public ResponseEntity<List<Board>> getAllBoard() {
-        return ResponseEntity.ok(boardService.getAllBoard());
+    public ResponseEntity<List<Board>> getAllBoard(@RequestHeader("Authorization") String token) {
+        Claims claims = null;
+        String jwtToken = null;
+        if (token != null && token.startsWith("Bearer ")) {
+            jwtToken = token.substring(7);
+            try {
+                claims = jwtTokenUtil.getAllClaimsFromToken(jwtToken);
+            } catch (IllegalArgumentException e) {
+                System.out.println("Unable to get JWT Token");
+            } catch (ExpiredJwtException e) {
+                System.out.println("JWT Token has expired");
+            }
+        } else {
+            throw new ResponseStatusException(HttpStatus.EXPECTATION_FAILED, "JWT Token does not begin with Bearer String");
+        }
+        return ResponseEntity.ok(boardService.getAllBoard(claims));
     }
 
     @GetMapping("/{id}")

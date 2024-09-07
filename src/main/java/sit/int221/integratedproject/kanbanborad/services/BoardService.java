@@ -39,8 +39,11 @@ public class BoardService {
         this.jwtTokenUtil = jwtTokenUtil;
     }
 
-    public List<Board> getAllBoard() {
-        return boardRepository.findAll();
+    public List<Board> getAllBoard(Claims claims) {
+        String oid = (String) claims.get("oid");
+        User user = userRepository.findById(oid)
+                .orElseThrow(() -> new ItemNotFoundException("User Id " + oid + " DOES NOT EXIST !!!"));
+        return boardRepository.findByOid(oid);
     }
 
     public BoardResponseDTO getBoardById(Claims claims, String id) {
