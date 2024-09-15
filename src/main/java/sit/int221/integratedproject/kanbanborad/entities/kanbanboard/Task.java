@@ -36,4 +36,8 @@ public class Task {
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     @Column(insertable = false, updatable = false)
     private Timestamp updatedOn;
+    @NotNull
+    @ManyToOne
+    @JoinColumn(name = "board_id")
+    private Board board;
 }

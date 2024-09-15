@@ -13,45 +13,53 @@ import sit.int221.integratedproject.kanbanborad.services.StatusService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/v2/statuses")
+@RequestMapping("/v3/boards")
 @CrossOrigin(origins = {"http://ip23kw1.sit.kmutt.ac.th", "http://intproj23.sit.kmutt.ac.th"})
 public class StatusController {
-    @Autowired
-    private StatusService statusService;
+    private final StatusService statusService;
 
-    @GetMapping("")
-    public ResponseEntity<List<StatusResponseDetailDTO>> getAllStatus() {
-        return ResponseEntity.status(HttpStatus.OK).body(statusService.findAllStatus());
+    public StatusController(StatusService statusService) {
+        this.statusService = statusService;
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<StatusResponseDTO> getStatusById(@PathVariable Integer id) {
-        return ResponseEntity.status(HttpStatus.OK).body(statusService.findStatusById(id));
+    @GetMapping("/{id}/statuses")
+    public ResponseEntity<List<StatusResponseDetailDTO>> getAllStatus(@PathVariable String id) {
+        return ResponseEntity.status(HttpStatus.OK).body(statusService.findAllStatus(id));
     }
 
-    @PostMapping("")
-    public ResponseEntity<StatusResponseDetailDTO> addNewStatus(@RequestBody @Valid StatusRequestDTO statusDTO) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(statusService.createNewStatus(statusDTO));
+    @GetMapping("/{id}/statuses/{statusId}")
+    public ResponseEntity<StatusResponseDTO> getStatusById(@PathVariable String id, @PathVariable Integer statusId) {
+        return ResponseEntity.status(HttpStatus.OK).body(statusService.findStatusById(id, statusId));
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<StatusResponseDetailDTO> updateStatus(@PathVariable Integer id,
-                                                          @RequestBody @Valid StatusRequestDTO statusDTO) {
-        return ResponseEntity.status(HttpStatus.OK).body(statusService.updateStatus(id, statusDTO));
+    @PostMapping("/{id}/statuses")
+    public ResponseEntity<StatusResponseDetailDTO> addNewStatus(@RequestBody @Valid StatusRequestDTO statusDTO,
+                                                                @PathVariable String id) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(statusService.createNewStatus(statusDTO, id));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<StatusResponseDTO> removeStatus(@PathVariable Integer id) {
-        return ResponseEntity.status(HttpStatus.OK).body(statusService.deleteStatus(id));
+    @PutMapping("/{id}/statuses/{statusId}")
+    public ResponseEntity<StatusResponseDetailDTO> updateStatus(@PathVariable String id,
+                                                                @RequestBody @Valid StatusRequestDTO statusDTO,
+                                                                @PathVariable Integer statusId) {
+        return ResponseEntity.status(HttpStatus.OK).body(statusService.updateStatus(id, statusDTO, statusId));
     }
 
-    @DeleteMapping("/{id}/{newId}")
-    public ResponseEntity<StatusResponseDTO> removeStatusAndTransferName(@PathVariable Integer id,
+    @DeleteMapping("/{id}/statuses/{statusId}")
+    public ResponseEntity<StatusResponseDTO> removeStatus(@PathVariable String id, @PathVariable Integer statusId) {
+        return ResponseEntity.status(HttpStatus.OK).body(statusService.deleteStatus(id, statusId));
+    }
+
+    @DeleteMapping("/{id}/statuses/{oldId}/{newId}")
+    public ResponseEntity<StatusResponseDTO> removeStatusAndTransferName(@PathVariable String id,
+                                                                         @PathVariable Integer oldId,
                                                                          @PathVariable Integer newId) {
-        if (id.equals(newId)) {
+        System.out.println("Received oldId: " + oldId + ", newId: " + newId);
+
+        if (oldId.equals(newId)) {
             throw new BadRequestException("destination status for task transfer must be different from current status.");
         }
-        return ResponseEntity.status(HttpStatus.OK).body(statusService.deleteTaskAndTransferStatus(id, newId));
+        return ResponseEntity.status(HttpStatus.OK).body(statusService.deleteTaskAndTransferStatus(id, oldId, newId));
     }
 
 }
