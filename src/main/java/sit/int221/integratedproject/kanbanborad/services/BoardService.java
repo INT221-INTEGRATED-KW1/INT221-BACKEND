@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sit.int221.integratedproject.kanbanborad.dtos.request.BoardLimitRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.request.BoardRequestDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.request.StatusRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.BoardResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.OwnerResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusLimitResponseDTO;
@@ -16,6 +17,7 @@ import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Status;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
+import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.StatusRepository;
 import sit.int221.integratedproject.kanbanborad.utils.ListMapper;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
@@ -29,13 +31,15 @@ public class BoardService {
     private final ModelMapper modelMapper;
     private final UserRepository userRepository;
     private final JwtTokenUtil jwtTokenUtil;
+    private final StatusRepository statusRepository;
 
-    public BoardService(BoardRepository boardRepository, ListMapper listMapper, ModelMapper modelMapper, UserRepository userRepository, JwtTokenUtil jwtTokenUtil) {
+    public BoardService(BoardRepository boardRepository, ListMapper listMapper, ModelMapper modelMapper, UserRepository userRepository, JwtTokenUtil jwtTokenUtil, StatusRepository statusRepository) {
         this.boardRepository = boardRepository;
         this.listMapper = listMapper;
         this.modelMapper = modelMapper;
         this.userRepository = userRepository;
         this.jwtTokenUtil = jwtTokenUtil;
+        this.statusRepository = statusRepository;
     }
 
     public List<Board> getAllBoard(Claims claims) {
@@ -58,15 +62,32 @@ public class BoardService {
     public BoardResponseDTO createBoard(Claims claims, BoardRequestDTO boardRequestDTO) {
         String oid = (String) claims.get("oid");
         User user = userRepository.findById(oid)
-                .orElseThrow(() -> new  ItemNotFoundException("User Id " + oid + " DOES NOT EXIST !!!"));
+                .orElseThrow(() -> new ItemNotFoundException("User Id " + oid + " DOES NOT EXIST !!!"));
+
+        // สร้างและบันทึกบอร์ดใหม่
         Board board = new Board();
         board.setOid(oid);
         board.setName(boardRequestDTO.getName());
         board.setLimitMaximumStatus(false);
         Board savedBoard = boardRepository.save(board);
 
+        saveDefaultStatuses(savedBoard);
+
+        // คืนค่า BoardResponseDTO
         return getBoardResponseDTO(user, savedBoard);
     }
+
+    private void saveDefaultStatuses(Board board) {
+        List<Status> defaultStatuses = List.of(
+                new Status("No Status", "The default status", "gray", board),
+                new Status("To Do", null, "orange", board),
+                new Status("Doing", "Being worked on", "blue", board),
+                new Status("Done", "Finished", "green", board)
+        );
+
+        statusRepository.saveAll(defaultStatuses);
+    }
+
 
     private BoardResponseDTO getBoardResponseDTO(User user, Board savedBoard) {
         OwnerResponseDTO ownerResponseDTO = new OwnerResponseDTO();

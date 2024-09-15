@@ -38,4 +38,10 @@ public class Status {
     @ManyToOne
     @JoinColumn(name = "board_id")
     private Board board;
+    public Status(String name, String description, String color, Board board) {
+        this.name = name;
+        this.description = description;
+        this.color = color;
+        this.board = board;
+    }
 }
