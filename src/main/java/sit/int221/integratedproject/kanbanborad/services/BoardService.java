@@ -64,19 +64,19 @@ public class BoardService {
         User user = userRepository.findById(oid)
                 .orElseThrow(() -> new ItemNotFoundException("User Id " + oid + " DOES NOT EXIST !!!"));
 
-        // สร้างและบันทึกบอร์ดใหม่
+        // Create and save a new board
         Board board = new Board();
         board.setOid(oid);
         board.setName(boardRequestDTO.getName());
         board.setLimitMaximumStatus(false);
         Board savedBoard = boardRepository.save(board);
 
+        // Save default statuses for the newly created board
         saveDefaultStatuses(savedBoard);
 
-        // คืนค่า BoardResponseDTO
+        // Return the BoardResponseDTO
         return getBoardResponseDTO(user, savedBoard);
     }
-
     private void saveDefaultStatuses(Board board) {
         List<Status> defaultStatuses = List.of(
                 new Status("No Status", "The default status", "gray", board),
@@ -85,9 +85,17 @@ public class BoardService {
                 new Status("Done", "Finished", "green", board)
         );
 
+        for (Status status : defaultStatuses) {
+            // Check if a status with the same name already exists in the same board
+            Status existingStatus = statusRepository.findByNameAndBoardId(status.getName(), board.getId());
+            if (existingStatus != null) {
+                throw new RuntimeException("Status name '" + status.getName() + "' already exists in board '" + board.getName() + "'");
+            }
+        }
+
+        // Save all default statuses
         statusRepository.saveAll(defaultStatuses);
     }
-
 
     private BoardResponseDTO getBoardResponseDTO(User user, Board savedBoard) {
         OwnerResponseDTO ownerResponseDTO = new OwnerResponseDTO();
