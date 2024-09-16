@@ -2,6 +2,7 @@ package sit.int221.integratedproject.kanbanborad.filter;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -84,6 +85,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             handleException(response, "JWT Token not well-formed", HttpStatus.UNAUTHORIZED, request.getRequestURI());
         } catch (TokenIsMissingException e) {
             handleException(response, "JWT Token is missing", HttpStatus.UNAUTHORIZED, request.getRequestURI());
+        } catch (SignatureException e) {
+            handleException(response, "JWT Token has been tampered with", HttpStatus.UNAUTHORIZED, request.getRequestURI());
         }
     }
 
