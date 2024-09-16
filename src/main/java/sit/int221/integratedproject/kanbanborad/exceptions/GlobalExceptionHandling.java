@@ -98,6 +98,12 @@ public class GlobalExceptionHandling {
         return buildErrorResponse(exception, exception.getMessage(), HttpStatus.UNAUTHORIZED, request);
     }
 
+    @ExceptionHandler(StatusUniqueException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ResponseEntity<ErrorResponse> handleStatusUniqueException(StatusUniqueException exception, WebRequest request) {
+        return buildErrorResponse(exception, exception.getMessage(), HttpStatus.BAD_REQUEST, request);
+    }
+
     @ExceptionHandler(ResponseStatusException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ResponseEntity<ErrorResponse> handleUnAuthorizationException(ResponseStatusException exception, WebRequest request) {

@@ -12,6 +12,7 @@ import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Status;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Task;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
+import sit.int221.integratedproject.kanbanborad.exceptions.StatusUniqueException;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.StatusRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.TaskRepository;
@@ -28,7 +29,7 @@ public class StatusService {
     private final BoardRepository boardRepository;
 
     public StatusService(TaskRepository taskRepository, StatusRepository statusRepository
-            ,ModelMapper modelMapper, BoardRepository boardRepository) {
+            , ModelMapper modelMapper, BoardRepository boardRepository) {
         this.taskRepository = taskRepository;
         this.statusRepository = statusRepository;
         this.modelMapper = modelMapper;
@@ -61,6 +62,13 @@ public class StatusService {
     public StatusResponseDetailDTO createNewStatus(StatusRequestDTO statusDTO, String id) {
         Board board = findBoardByIdAndValidate(id);
         Status status = new Status();
+
+        // ตรวจสอบว่ามีสถานะชื่อเดียวกันอยู่ในบอร์ดแล้วหรือไม่
+        boolean statusExists = statusRepository.existsByNameAndBoardId(statusDTO.getName(), board.getId());
+        if (statusExists) {
+            throw new StatusUniqueException("Status name '" + statusDTO.getName() + "' already exists in board '" + board.getName() + "'");
+        }
+
         return saveStatus(statusDTO, status, board);
     }
 
@@ -68,10 +76,21 @@ public class StatusService {
     public StatusResponseDetailDTO updateStatus(String id, StatusRequestDTO statusDTO, Integer statusId) {
         Board board = findBoardByIdAndValidate(id);
         Status existingStatus = findStatusByIdAndValidate(statusId);
+
         if (!existingStatus.getBoard().getId().equals(id)) {
             throw new ItemNotFoundException("Status Id " + statusId + " does not belong to Board Id " + id);
         }
+
         validateStatusModification(existingStatus);
+
+        // ตรวจสอบว่าชื่อสถานะใหม่ที่จะอัปเดตซ้ำกับสถานะอื่นในบอร์ดเดียวกันหรือไม่
+        if (!existingStatus.getName().equals(statusDTO.getName())) {
+            boolean statusExists = statusRepository.existsByNameAndBoardId(statusDTO.getName(), board.getId());
+            if (statusExists) {
+                throw new StatusUniqueException("Status name '" + statusDTO.getName() + "' already exists in board '" + board.getName() + "'");
+            }
+        }
+
         return saveStatus(statusDTO, existingStatus, board);
     }
 
@@ -80,6 +99,7 @@ public class StatusService {
         status.setDescription(Utils.checkAndSetDefaultNull(statusDTO.getDescription()));
         status.setColor(Utils.trimString(statusDTO.getColor()));
         status.setBoard(board);
+
         Status savedStatus = statusRepository.save(status);
         return convertToDetailDTO(savedStatus);
     }

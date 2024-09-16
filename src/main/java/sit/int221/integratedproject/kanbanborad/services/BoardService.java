@@ -85,14 +85,6 @@ public class BoardService {
                 new Status("Done", "Finished", "green", board)
         );
 
-        for (Status status : defaultStatuses) {
-            // Check if a status with the same name already exists in the same board
-            Status existingStatus = statusRepository.findByNameAndBoardId(status.getName(), board.getId());
-            if (existingStatus != null) {
-                throw new RuntimeException("Status name '" + status.getName() + "' already exists in board '" + board.getName() + "'");
-            }
-        }
-
         // Save all default statuses
         statusRepository.saveAll(defaultStatuses);
     }
