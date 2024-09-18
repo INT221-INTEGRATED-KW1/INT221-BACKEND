@@ -12,6 +12,7 @@ import sit.int221.integratedproject.kanbanborad.dtos.request.BoardRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.BoardResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusLimitResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
+import sit.int221.integratedproject.kanbanborad.exceptions.BoardNameNobodyException;
 import sit.int221.integratedproject.kanbanborad.services.BoardService;
 import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
 
@@ -70,7 +71,11 @@ public class BoardController {
 
     @PostMapping("")
     public ResponseEntity<BoardResponseDTO> createBoard(@RequestHeader("Authorization") String token,
-                                                        @RequestBody BoardRequestDTO boardRequestDTO) {
+                                                        @RequestBody(required = false) @Valid BoardRequestDTO boardRequestDTO) {
+        if (boardRequestDTO == null) {
+            throw new BoardNameNobodyException("Require name to created board");
+        }
+
         Claims claims = null;
         String jwtToken = null;
         if (token != null && token.startsWith("Bearer ")) {
@@ -85,7 +90,8 @@ public class BoardController {
         } else {
             throw new ResponseStatusException(HttpStatus.EXPECTATION_FAILED, "JWT Token does not begin with Bearer String");
         }
-        return ResponseEntity.ok(boardService.createBoard(claims, boardRequestDTO));
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(boardService.createBoard(claims, boardRequestDTO));
     }
 
     @PatchMapping("/{id}/maximum-status")

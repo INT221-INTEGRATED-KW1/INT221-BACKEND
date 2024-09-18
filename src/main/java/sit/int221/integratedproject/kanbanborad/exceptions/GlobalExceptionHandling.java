@@ -104,6 +104,12 @@ public class GlobalExceptionHandling {
         return buildErrorResponse(exception, exception.getMessage(), HttpStatus.BAD_REQUEST, request);
     }
 
+    @ExceptionHandler(BoardNameNobodyException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ResponseEntity<ErrorResponse> handleBoardNameNobodyException(BoardNameNobodyException exception, WebRequest request) {
+        return buildErrorResponse(exception, exception.getMessage(), HttpStatus.BAD_REQUEST, request);
+    }
+
     @ExceptionHandler(ResponseStatusException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ResponseEntity<ErrorResponse> handleUnAuthorizationException(ResponseStatusException exception, WebRequest request) {
