@@ -20,7 +20,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/v3/boards")
-@CrossOrigin(origins = {"http://ip23kw1.sit.kmutt.ac.th", "http://intproj23.sit.kmutt.ac.th"})
+@CrossOrigin(origins = "http://localhost")
 public class BoardController {
     private final BoardService boardService;
     private final JwtTokenUtil jwtTokenUtil;
