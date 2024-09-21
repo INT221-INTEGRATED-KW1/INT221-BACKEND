@@ -6,14 +6,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sit.int221.integratedproject.kanbanborad.dtos.request.BoardLimitRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.request.BoardRequestDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.request.StatusRequestDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.response.BoardResponseDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.response.OwnerResponseDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.response.StatusLimitResponseDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.response.StatusResponseDetailDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.request.BoardVisibilityRequestDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.response.*;
 import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Status;
+import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
@@ -49,14 +47,15 @@ public class BoardService {
         return boardRepository.findByOid(oid);
     }
 
-    public BoardResponseDTO getBoardById(Claims claims, String id) {
+    public BoardResponseDTO getBoardById(String id) {
+        // Check if the Board exists
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
-        String oid = (String) claims.get("oid");
-        User user = userRepository.findById(oid)
-                .orElseThrow(() -> new ItemNotFoundException("User Id " + oid + " DOES NOT EXIST !!!"));
 
-        return getBoardResponseDTO(user, board);
+        User user = userRepository.findById(board.getOid())
+                .orElseThrow(() -> new ItemNotFoundException("User Id " + board.getOid() + " DOES NOT EXIST !!!"));
+
+        return getBoardResponseDTO(user, board);  // ส่งข้อมูลของ user และ board ไปแปลงเป็น DTO
     }
 
     public BoardResponseDTO createBoard(Claims claims, BoardRequestDTO boardRequestDTO) {
@@ -69,6 +68,7 @@ public class BoardService {
         board.setOid(oid);
         board.setName(boardRequestDTO.getName());
         board.setLimitMaximumStatus(false);
+        board.setVisibility("PRIVATE");
         Board savedBoard = boardRepository.save(board);
 
         // Save default statuses for the newly created board
@@ -77,6 +77,7 @@ public class BoardService {
         // Return the BoardResponseDTO
         return getBoardResponseDTO(user, savedBoard);
     }
+
     private void saveDefaultStatuses(Board board) {
         List<Status> defaultStatuses = List.of(
                 new Status("No Status", "The default status", "gray", board),
@@ -98,6 +99,7 @@ public class BoardService {
         boardResponseDTO.setId(savedBoard.getId());
         boardResponseDTO.setName(Utils.trimString(savedBoard.getName()));
         boardResponseDTO.setOwner(ownerResponseDTO);
+        boardResponseDTO.setVisibility(savedBoard.getVisibility());
 
         return boardResponseDTO;
     }
@@ -124,6 +126,23 @@ public class BoardService {
             }
             responseDTO.setStatuses(statusResponseDTOs);
         }
+
+        return responseDTO;
+    }
+
+    @Transactional
+    public BoardVisibilityResponseDTO updateBoardVisibility(String id, BoardVisibilityRequestDTO boardDTO) {
+        if (!boardDTO.getVisibility().equalsIgnoreCase("PUBLIC")
+                && !boardDTO.getVisibility().equalsIgnoreCase("PRIVATE")) {
+            throw new BadRequestException("Visibility must be either 'public' or 'private'.");
+        }
+        Board existingBoard = boardRepository.findById(id)
+                .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
+            existingBoard.setVisibility(boardDTO.getVisibility());
+        Board updatedBoard = boardRepository.save(existingBoard);
+
+        BoardVisibilityResponseDTO responseDTO = new BoardVisibilityResponseDTO();
+        responseDTO.setVisibility(updatedBoard.getVisibility());
 
         return responseDTO;
     }

@@ -11,4 +11,5 @@ public class BoardResponseDTO {
     private String id;
     private String name;
     private OwnerResponseDTO owner;
+    private String visibility;
 }

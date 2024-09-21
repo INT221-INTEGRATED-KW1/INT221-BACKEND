@@ -1,8 +1,8 @@
 package sit.int221.integratedproject.kanbanborad.services;
 
+import io.jsonwebtoken.Claims;
 import jakarta.transaction.Transactional;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import sit.int221.integratedproject.kanbanborad.dtos.request.StatusRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusResponseDTO;
@@ -11,8 +11,10 @@ import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Status;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Task;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
+import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.exceptions.StatusUniqueException;
+import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.StatusRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.TaskRepository;
@@ -27,17 +29,29 @@ public class StatusService {
     private final StatusRepository statusRepository;
     private final ModelMapper modelMapper;
     private final BoardRepository boardRepository;
+    private final UserRepository userRepository;
 
     public StatusService(TaskRepository taskRepository, StatusRepository statusRepository
-            , ModelMapper modelMapper, BoardRepository boardRepository) {
+            , ModelMapper modelMapper, BoardRepository boardRepository, UserRepository userRepository) {
         this.taskRepository = taskRepository;
         this.statusRepository = statusRepository;
         this.modelMapper = modelMapper;
         this.boardRepository = boardRepository;
+        this.userRepository = userRepository;
     }
 
-    public List<StatusResponseDetailDTO> findAllStatus(String id) {
-        Board board = findBoardByIdAndValidate(id);
+    // Helper method to check if the user is the owner
+    private boolean isOwner(String oid, String boardId) {
+        Board board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
+        return board.getOid().equals(oid);
+    }
+
+    public List<StatusResponseDetailDTO> findAllStatus(Claims claims, String id) {
+        // Validate board access
+        Board board = findBoardByIdAndValidateAccess(claims, id);
+
+        // Retrieve all statuses for the board
         List<Status> statuses = board.getStatuses();
         List<StatusResponseDetailDTO> statusResponseDTOs = new ArrayList<>();
         for (Status status : statuses) {
@@ -48,14 +62,40 @@ public class StatusService {
         return statusResponseDTOs;
     }
 
-    public StatusResponseDTO findStatusById(String id, Integer statusId) {
-        Board board = boardRepository.findById(id)
-                .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
+    public StatusResponseDTO findStatusById(Claims claims, String id, Integer statusId) {
+        // Validate board access
+        Board board = findBoardByIdAndValidateAccess(claims, id);
+
+        // Retrieve the status by statusId and boardId
         Status status = statusRepository.findStatusByIdAndBoardId(statusId, id);
         if (status == null) {
             throw new ItemNotFoundException("Status Id " + statusId + " does not belong to Board Id " + id);
         }
         return modelMapper.map(status, StatusResponseDTO.class);
+    }
+
+    /**
+     * Utility method to validate board access based on visibility and ownership.
+     */
+    private Board findBoardByIdAndValidateAccess(Claims claims, String id) {
+        // Find the board by its id
+        Board board = boardRepository.findById(id)
+                .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
+
+        // Check if the board is public or requires authentication
+        if (!board.getVisibility().equalsIgnoreCase("PUBLIC")) {
+            // If the board is not public, validate claims (authentication required)
+            if (claims == null) {
+                throw new ForbiddenException("Authentication required to access this board.");
+            }
+
+            // Check ownership
+            String oid = (String) claims.get("oid");
+            if (!isOwner(oid, id)) {
+                throw new ForbiddenException("You are not allowed to access this board.");
+            }
+        }
+        return board;
     }
 
     @Transactional

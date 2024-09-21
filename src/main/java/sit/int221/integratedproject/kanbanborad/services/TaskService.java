@@ -1,8 +1,8 @@
 package sit.int221.integratedproject.kanbanborad.services;
 
+import io.jsonwebtoken.Claims;
 import jakarta.transaction.Transactional;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import sit.int221.integratedproject.kanbanborad.dtos.request.TaskRequestDTO;
@@ -14,6 +14,7 @@ import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Status;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Task;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.FieldNotFoundException;
+import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.StatusRepository;
@@ -38,6 +39,12 @@ public class TaskService {
         this.modelMapper = modelMapper;
         this.listMapper = listMapper;
         this.boardRepository = boardRepository;
+    }
+
+    private boolean isOwner(String oid, String boardId) {
+        Board board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
+        return board.getOid().equals(oid);
     }
 
     public List<TaskResponseDTO> findAllTask(String id) {
@@ -66,10 +73,14 @@ public class TaskService {
         return listMapper.mapList(tasks, TaskResponseDTO.class);
     }
 
-    public TaskDetailResponseDTO findTaskById(String id, Integer taskId) {
-        Board board = getBoardById(id);
-        Task task = getTaskById(taskId);
-        validateTaskBelongsToBoard(task, board.getId());
+    public TaskDetailResponseDTO findTaskById(Claims claims, String boardId, Integer taskId) {
+        findBoardByIdAndValidateAccess(claims, boardId);
+
+        Task task = taskRepository.findTaskByIdAndBoardId(taskId, boardId);
+        if (task == null) {
+            throw new ItemNotFoundException("Task Id " + taskId + " does not belong to Board Id " + boardId);
+        }
+
         return modelMapper.map(task, TaskDetailResponseDTO.class);
     }
 
@@ -155,6 +166,27 @@ public class TaskService {
         if (!status.getBoard().getId().equals(boardId)) {
             throw new BadRequestException("The status does not belong to the specified board.");
         }
+    }
+
+    public Board findBoardByIdAndValidateAccess(Claims claims, String id) {
+        // Find the board by its id
+        Board board = boardRepository.findById(id)
+                .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
+
+        // Check if the board is public or requires authentication
+        if (!board.getVisibility().equalsIgnoreCase("PUBLIC")) {
+            // If the board is not public, validate claims (authentication required)
+            if (claims == null) {
+                throw new ForbiddenException("Authentication required to access this board.");
+            }
+
+            // Check ownership
+            String oid = (String) claims.get("oid");
+            if (!isOwner(oid, id)) {
+                throw new ForbiddenException("You are not allowed to access this board.");
+            }
+        }
+        return board;
     }
 
 }

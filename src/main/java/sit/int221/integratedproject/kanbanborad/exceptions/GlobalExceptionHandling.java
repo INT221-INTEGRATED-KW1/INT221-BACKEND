@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -80,6 +81,12 @@ public class GlobalExceptionHandling {
         return buildErrorResponse(exception,exception.getMessage() ,HttpStatus.NOT_FOUND, request);
     }
 
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ResponseEntity<ErrorResponse> handleMissingRequestException(MissingRequestHeaderException exception, WebRequest request) {
+        return buildErrorResponse(exception,exception.getMessage() ,HttpStatus.UNAUTHORIZED, request);
+    }
+
     @ExceptionHandler(GeneralException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ResponseEntity<ErrorResponse> handleAllUncaughtException(Exception exception, WebRequest request) {
@@ -108,6 +115,12 @@ public class GlobalExceptionHandling {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ResponseEntity<ErrorResponse> handleBoardNameNobodyException(BoardNameNobodyException exception, WebRequest request) {
         return buildErrorResponse(exception, exception.getMessage(), HttpStatus.BAD_REQUEST, request);
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ResponseEntity<ErrorResponse> handleForbiddenException(ForbiddenException exception, WebRequest request) {
+        return buildErrorResponse(exception, exception.getMessage(), HttpStatus.FORBIDDEN, request);
     }
 
     @ExceptionHandler(ResponseStatusException.class)

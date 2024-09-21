@@ -32,6 +32,7 @@ public class Board {
     @NotBlank
     private String name;
     private Boolean limitMaximumStatus;
+    private String visibility;
     @JsonIgnore
     @OneToMany(mappedBy = "board")
     private List<Status> statuses = new ArrayList<>();
