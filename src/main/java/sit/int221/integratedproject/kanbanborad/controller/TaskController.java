@@ -38,8 +38,6 @@ public class TaskController {
         this.jwtTokenUtil = jwtTokenUtil;
     }
 
-
-
     @GetMapping("/{id}/tasks")
     public ResponseEntity<List<TaskResponseDTO>> getAllTask(@RequestParam(required = false) String sortBy,
                                                             @RequestParam(required = false) String[] filterStatuses,
@@ -47,15 +45,15 @@ public class TaskController {
                                                             @RequestHeader(value = "Authorization", required = false) String token) {
         Board board = getBoardOrThrow(id);
 
+        List<TaskResponseDTO> tasks = fetchTasksBasedOnParams(sortBy, filterStatuses, id);
+
         if (isPublicBoard(board)) {
-            return ResponseEntity.ok(taskService.findAllTask(id));
+            return ResponseEntity.ok(tasks);
         }
 
         Claims claims = validateToken(token);
 
         validateOwnership(claims, id);
-
-        List<TaskResponseDTO> tasks = fetchTasksBasedOnParams(sortBy, filterStatuses, id);
 
         return ResponseEntity.status(HttpStatus.OK).body(tasks);
     }
