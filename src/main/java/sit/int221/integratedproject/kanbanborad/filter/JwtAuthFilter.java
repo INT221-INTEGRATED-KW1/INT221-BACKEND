@@ -47,7 +47,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         // Get request URI
         String requestURI = request.getRequestURI();
-        if (requestURI.equals("/login") ||
+        if (requestURI.equals("/login") || requestURI.equals("/token") ||
                 requestURI.matches("/v3/boards/[A-Za-z0-9]+/statuses(/\\d+)?") ||
                 requestURI.matches("/v3/boards/[A-Za-z0-9]+/tasks(/\\d+)?") ||
                 requestURI.matches("/v3/boards/[A-Za-z0-9]+") ||
