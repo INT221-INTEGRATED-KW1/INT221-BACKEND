@@ -21,7 +21,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/v3/boards")
-@CrossOrigin(origins = "http://localhost")
+@CrossOrigin(origins = {"http://ip23kw1.sit.kmutt.ac.th", "http://intproj23.sit.kmutt.ac.th"})
 public class StatusController {
     private final StatusService statusService;
     private final BoardRepository boardRepository;
