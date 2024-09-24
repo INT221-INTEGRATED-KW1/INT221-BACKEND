@@ -17,6 +17,7 @@ import sit.int221.integratedproject.kanbanborad.dtos.response.AuthenticateUser;
 import sit.int221.integratedproject.kanbanborad.dtos.response.LoginResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.RefreshToken;
 import sit.int221.integratedproject.kanbanborad.exceptions.GeneralException;
+import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.RefreshTokenRepository;
 import sit.int221.integratedproject.kanbanborad.services.AuthService;
 import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
@@ -57,11 +58,20 @@ public class AuthController {
 
         if (token != null && token.startsWith("Bearer ")) {
             jwtToken = token.substring(7);
+
+            // Check if the refresh token exists in the database
+            var refreshToken = refreshTokenRepository.findRefreshTokenByToken(jwtToken);
+
+            if (refreshToken == null) {
+                throw new ItemNotFoundException("Refresh token not found");
+            }
+
             try {
                 // Validate refresh token
                 if (!jwtTokenUtil.validateRefreshToken(jwtToken)) {
                     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired refresh token");
                 }
+
                 claims = jwtTokenUtil.getAllClaimsFromToken(jwtToken);
             } catch (IllegalArgumentException e) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unable to get JWT Token");

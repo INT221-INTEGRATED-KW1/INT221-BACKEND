@@ -15,6 +15,7 @@ import sit.int221.integratedproject.kanbanborad.dtos.response.LoginResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.RefreshToken;
 import sit.int221.integratedproject.kanbanborad.exceptions.GeneralException;
+import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.RefreshTokenRepository;
 
@@ -45,7 +46,9 @@ public class AuthService {
             String refreshToken = jwtTokenUtil.generateRefreshToken(authentication);
 
             var authenticatedUser = (AuthenticateUser) authentication.getPrincipal();
+
             RefreshToken refreshTokenEntity = new RefreshToken(null, refreshToken, authenticatedUser.oid(), String.valueOf(System.currentTimeMillis()));
+
             refreshTokenRepository.save(refreshTokenEntity);
 
             return new LoginResponseDTO(accessToken, refreshToken);

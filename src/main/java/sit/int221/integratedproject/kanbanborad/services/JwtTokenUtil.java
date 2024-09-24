@@ -54,15 +54,8 @@ public class JwtTokenUtil implements Serializable {
     }
 
     public Claims getAllClaimsFromToken(String token) {
-        try {
-            return Jwts.parser().setSigningKey(getSignInKey()).parseClaimsJws(token).getBody();
-        } catch (ExpiredJwtException e) {
-            throw new ExpiredJwtException(e.getHeader(), e.getClaims(), e.getMessage());
-        } catch (MalformedJwtException | SignatureException e) {
-            throw new TokenNotWellException("JWT Token has been tampered with");
-        } catch (Exception e) {
-            throw new TokenIsMissingException("JWT Token is missing");
-        }
+        Claims claims = Jwts.parser().setSigningKey(getSignInKey()).parseClaimsJws(token).getBody();
+        return claims;
     }
 
     public Boolean isTokenExpired(String token) {

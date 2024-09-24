@@ -67,11 +67,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         try {
-            // ตรวจสอบว่ามี token หรือไม่ และ token นั้นขึ้นต้นด้วย Bearer หรือเปล่า
+            // Check if the token exists and starts with Bearer
             if (requestTokenHeader != null && requestTokenHeader.startsWith("Bearer ")) {
                 jwtToken = requestTokenHeader.substring(7);
 
-                // ตรวจสอบว่า token นั้นประกอบด้วย 3 ส่วนหรือไม่
+                // Check if the token has 3 parts
                 String[] tokenParts = jwtToken.split("\\.");
                 if (tokenParts.length == 3) {
                     oid = jwtTokenUtil.getOidFromToken(jwtToken);
@@ -97,14 +97,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
         } catch (ExpiredJwtException e) {
             handleException(response, "JWT Token has expired", HttpStatus.UNAUTHORIZED, request.getRequestURI());
-        } catch (MalformedJwtException e) {
+        } catch (MalformedJwtException | SignatureException e) {
             handleException(response, "JWT Token has been tampered with", HttpStatus.UNAUTHORIZED, request.getRequestURI());
         } catch (TokenNotWellException e) {
             handleException(response, "JWT Token not well-formed", HttpStatus.UNAUTHORIZED, request.getRequestURI());
         } catch (TokenIsMissingException e) {
             handleException(response, "JWT Token is missing", HttpStatus.UNAUTHORIZED, request.getRequestURI());
-        } catch (SignatureException e) {
-            handleException(response, "JWT Token has been tampered with", HttpStatus.UNAUTHORIZED, request.getRequestURI());
         }
     }
 
