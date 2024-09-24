@@ -1,3 +1,4 @@
+
 package sit.int221.integratedproject.kanbanborad.filter;
 
 import io.jsonwebtoken.ExpiredJwtException;
@@ -47,45 +48,30 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         // Get request URI
         String requestURI = request.getRequestURI();
-        if (requestURI.equals("/login") || requestURI.equals("/token") ||
-                requestURI.matches("/v3/boards/[A-Za-z0-9]+/statuses(/\\d+)?") ||
-                requestURI.matches("/v3/boards/[A-Za-z0-9]+/tasks(/\\d+)?") ||
-                requestURI.matches("/v3/boards/[A-Za-z0-9]+") ||
-                requestURI.matches("/v3/boards/[A-Za-z0-9]+/maximum-status")) {
+        if (requestURI.equals("/login") || requestURI.equals("/token")) {
             chain.doFilter(request, response);
             return;
         }
 
-        // Extract the board ID only for board-related endpoints
-        String boardId = extractBoardIdFromURI(requestURI);
+        String method = request.getMethod();
 
-        // For endpoints that require a board ID (like getting statuses), handle the board visibility check
-        if (boardId != null) {
-            try {
-                Board board = boardRepository.findById(boardId)
-                        .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
+        boolean isPublicGetEndpoint = method.equalsIgnoreCase("GET") &&
+                (requestURI.matches("/v3/boards/[A-Za-z0-9]+") ||
+                        requestURI.matches("/v3/boards/[A-Za-z0-9]+/statuses(/\\d+)?") ||
+                        requestURI.matches("/v3/boards/[A-Za-z0-9]+/tasks(/\\d+)?"));
 
-                if (board.getVisibility().equalsIgnoreCase("PUBLIC")) {
-                    chain.doFilter(request, response);
-                    return;
-                }
-            } catch (ItemNotFoundException e) {
-                // Return 404 if the board does not exist
-                handleException(response, e.getMessage(), HttpStatus.NOT_FOUND, request.getRequestURI());
-                return; // Stop further processing
-            }
-        } else if (!requestURI.equals("/v3/boards")) {
-            // Handle the case where the board ID is missing and it's not a boards endpoint
-            handleException(response, "Board ID is missing in the request", HttpStatus.BAD_REQUEST, request.getRequestURI());
-            return; // Stop further processing
+        // If the endpoint is public GET, allow access without token
+        if (isPublicGetEndpoint) {
+            chain.doFilter(request, response);
+            return;
         }
 
         try {
-            // Process the JWT token
+            // ตรวจสอบว่ามี token หรือไม่ และ token นั้นขึ้นต้นด้วย Bearer หรือเปล่า
             if (requestTokenHeader != null && requestTokenHeader.startsWith("Bearer ")) {
                 jwtToken = requestTokenHeader.substring(7);
 
-                // Manually check if the JWT token has three parts
+                // ตรวจสอบว่า token นั้นประกอบด้วย 3 ส่วนหรือไม่
                 String[] tokenParts = jwtToken.split("\\.");
                 if (tokenParts.length == 3) {
                     oid = jwtTokenUtil.getOidFromToken(jwtToken);
@@ -98,7 +84,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                             usernamePasswordAuthenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                             SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
                         } else {
-                            System.out.println("Token validation failed");
+                            throw new SignatureException("Token validation failed");
                         }
                     }
                 } else {
@@ -129,18 +115,5 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String jsonResponse = String.format("{\"status\": %d, \"message\": \"%s\", \"instance\": \"uri=%s\"}",
                 status.value(), message, instance);
         response.getWriter().write(jsonResponse);
-    }
-
-    private String extractBoardIdFromURI(String uri) {
-        // Split the URI by "/"
-        String[] parts = uri.split("/");
-
-        // Check if there are enough parts to extract the board ID (4th part in the URI)
-        if (parts.length > 3) {
-            return parts[3]; // The board ID is the 4th part of the URI (index 3)
-        }
-
-        // Return null if there are not enough parts
-        return null;
     }
 }

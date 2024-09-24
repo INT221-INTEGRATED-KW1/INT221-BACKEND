@@ -162,7 +162,7 @@ public class TaskController {
 
         return claims;
     }
-    
+
     private Board validateBoardAndOwnership(String boardId, String token) {
         Board board = getBoardOrThrow(boardId);
         Claims claims = validateTokenAndOwnership(token, boardId);

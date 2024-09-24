@@ -39,27 +39,12 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<Object> login(@RequestBody @Valid JwtRequestUser jwtRequestUser) {
         try {
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(jwtRequestUser.getUserName(), jwtRequestUser.getPassword())
-            );
-            // Generate the access token
-            String accessToken = jwtTokenUtil.generateToken(authentication);
-
-            // Generate the refresh token
-            String refreshToken = jwtTokenUtil.generateRefreshToken(authentication);
-
-            // Save refresh token to the database
-            var authenticatedUser = (AuthenticateUser) authentication.getPrincipal();
-            RefreshToken refreshTokenEntity = new RefreshToken(null, refreshToken, authenticatedUser.oid(), String.valueOf(System.currentTimeMillis()));
-            refreshTokenRepository.save(refreshTokenEntity);
-
-            // Return both tokens in the response
-            LoginResponseDTO responseDTO = new LoginResponseDTO(accessToken, refreshToken);
+            // Delegate the login logic to the AuthService
+            LoginResponseDTO responseDTO = authService.login(jwtRequestUser);
             return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
-        } catch (AuthenticationException e) {
-            System.out.println(jwtRequestUser);
+        } catch (UsernameNotFoundException e) {
             throw new UsernameNotFoundException("Username or Password is incorrect");
-        } catch (Exception e) {
+        } catch (GeneralException e) {
             throw new GeneralException("There is a problem. Please try again later.");
         }
     }
