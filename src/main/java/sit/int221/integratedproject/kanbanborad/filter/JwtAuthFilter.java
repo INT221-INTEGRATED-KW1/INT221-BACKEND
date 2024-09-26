@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import sit.int221.integratedproject.kanbanborad.dtos.response.AuthenticateUser;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
+import sit.int221.integratedproject.kanbanborad.enumeration.JwtErrorType;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.exceptions.TokenIsMissingException;
 import sit.int221.integratedproject.kanbanborad.exceptions.TokenNotWellException;
@@ -96,22 +97,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             chain.doFilter(request, response);
         } catch (ExpiredJwtException e) {
-            handleException(response, "JWT Token has expired", HttpStatus.UNAUTHORIZED, request.getRequestURI());
+            handleException(JwtErrorType.EXPIRED_TOKEN,response, "JWT Token has expired", HttpStatus.UNAUTHORIZED, request.getRequestURI());
         } catch (MalformedJwtException | SignatureException e) {
-            handleException(response, "JWT Token has been tampered with", HttpStatus.UNAUTHORIZED, request.getRequestURI());
+            handleException(JwtErrorType.TAMPERED_TOKEN,response, "JWT Token has been tampered with", HttpStatus.UNAUTHORIZED, request.getRequestURI());
         } catch (TokenNotWellException e) {
-            handleException(response, "JWT Token not well-formed", HttpStatus.UNAUTHORIZED, request.getRequestURI());
+            handleException(JwtErrorType.MALFORMED_TOKEN, response, "JWT Token not well-formed", HttpStatus.UNAUTHORIZED, request.getRequestURI());
         } catch (TokenIsMissingException e) {
-            handleException(response, "JWT Token is missing", HttpStatus.UNAUTHORIZED, request.getRequestURI());
+            handleException(JwtErrorType.MISSING_TOKEN, response, "JWT Token is missing", HttpStatus.UNAUTHORIZED, request.getRequestURI());
         }
     }
 
-    private void handleException(HttpServletResponse response, String message, HttpStatus status, String instance)
+    private void handleException(JwtErrorType type, HttpServletResponse response, String message, HttpStatus status, String instance)
             throws IOException {
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        String jsonResponse = String.format("{\"status\": %d, \"message\": \"%s\", \"instance\": \"uri=%s\"}",
-                status.value(), message, instance);
+        String jsonResponse = String.format("{\"type\": \"%s\", \"status\": %d, \"message\": \"%s\", \"instance\": \"uri=%s\"}",
+               type.name() ,status.value(), message, instance);
         response.getWriter().write(jsonResponse);
     }
 }
