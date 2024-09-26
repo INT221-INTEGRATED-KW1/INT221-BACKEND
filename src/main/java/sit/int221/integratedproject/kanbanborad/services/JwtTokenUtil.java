@@ -1,18 +1,22 @@
 package sit.int221.integratedproject.kanbanborad.services;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 import sit.int221.integratedproject.kanbanborad.dtos.response.AuthenticateUser;
 import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
+import sit.int221.integratedproject.kanbanborad.exceptions.TokenIsMissingException;
+import sit.int221.integratedproject.kanbanborad.exceptions.TokenNotWellException;
 import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.security.Key;
 import java.util.Date;
@@ -60,22 +64,9 @@ public class JwtTokenUtil implements Serializable {
     }
 
     public String generateToken(Authentication authentication) {
+        User user = getUserFromAuthentication(authentication);
+
         Map<String, Object> claims = new HashMap<>();
-
-        Object principal = authentication.getPrincipal();
-        User user;
-
-        if (principal instanceof AuthenticateUser) {
-            var authenticatedUser = (AuthenticateUser) principal;
-            user = userRepository.findById(authenticatedUser.oid())
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        } else if (principal instanceof String) {
-            user = userRepository.findByUsername((String) principal)
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + principal));
-        } else {
-            throw new IllegalArgumentException("Unexpected principal type");
-        }
-
         claims.put("iss", ISSUER);
         claims.put("name", user.getName());
         claims.put("oid", user.getOid());
@@ -86,25 +77,28 @@ public class JwtTokenUtil implements Serializable {
     }
 
     public String generateRefreshToken(Authentication authentication) {
-        Object principal = authentication.getPrincipal();
-        User user;
-
-        if (principal instanceof AuthenticateUser) {
-            var authenticatedUser = (AuthenticateUser) principal;
-            user = userRepository.findById(authenticatedUser.oid())
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        } else if (principal instanceof String) {
-            user = userRepository.findByUsername((String) principal)
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + principal));
-        } else {
-            throw new IllegalArgumentException("Unexpected principal type");
-        }
+        User user = getUserFromAuthentication(authentication);
 
         Map<String, Object> claims = new HashMap<>();
         claims.put("iss", ISSUER);
         claims.put("oid", user.getOid());
 
         return doGenerateRefreshToken(claims);
+    }
+
+    private User getUserFromAuthentication(Authentication authentication) {
+        Object principal = authentication.getPrincipal();
+
+        if (principal instanceof AuthenticateUser) {
+            var authenticatedUser = (AuthenticateUser) principal;
+            return userRepository.findById(authenticatedUser.oid())
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found with oid: " + authenticatedUser.oid()));
+        } else if (principal instanceof String) {
+            return userRepository.findByUsername((String) principal)
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + principal));
+        } else {
+            throw new IllegalArgumentException("Unexpected principal type: " + principal.getClass().getName());
+        }
     }
 
     private String doGenerateRefreshToken(Map<String, Object> claims) {
@@ -122,6 +116,7 @@ public class JwtTokenUtil implements Serializable {
                 .setExpiration(new Date(System.currentTimeMillis() + JWT_TOKEN_VALIDITY))
                 .signWith(signatureAlgorithm, getSignInKey()).compact();
     }
+
 
     public Boolean validateToken(String token, AuthenticateUser userDetails) {
         final String oid = getOidFromToken(token);
@@ -141,4 +136,5 @@ public class JwtTokenUtil implements Serializable {
         byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
         return Keys.hmacShaKeyFor(keyBytes);
     }
+
 }

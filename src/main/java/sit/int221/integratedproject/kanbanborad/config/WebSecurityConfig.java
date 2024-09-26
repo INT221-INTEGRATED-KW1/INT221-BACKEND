@@ -33,11 +33,10 @@ public class WebSecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity.csrf(csrf -> csrf.disable())
                 .authorizeRequests(authorize -> authorize
-                        .requestMatchers("/login", "/token").permitAll()  // อนุญาตให้เข้าถึง /login โดยไม่ต้องล็อกอิน
-                        .requestMatchers("/v3/boards/*","/v3/boards/*/tasks", "/v3/boards/*/statuses",
+                        .requestMatchers("/login", "/token", "/v3/boards/*","/v3/boards/*/tasks", "/v3/boards/*/statuses",
                                 "/v3/boards/*/tasks/*", "/v3/boards/*/statuses/*", "/v3/boards/*/maximum-status").permitAll()  // อนุญาต GET tasks, statuses สำหรับทุกคน
-                        .anyRequest().authenticated())          // อื่นๆ ต้องมีการ authenticate
-                .httpBasic(withDefaults());                     // ใช้ httpBasic authentication
+                        .anyRequest().authenticated())
+                .httpBasic(withDefaults());
         httpSecurity.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class); // เพิ่ม JWT Filter
         return httpSecurity.build();
     }

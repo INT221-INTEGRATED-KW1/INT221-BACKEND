@@ -2,6 +2,8 @@ package sit.int221.integratedproject.kanbanborad.controller;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,27 +42,8 @@ public class BoardController {
 
     @GetMapping("")
     public ResponseEntity<List<Board>> getAllBoard(@RequestHeader("Authorization") String token) {
-        Claims claims = null;
-        String jwtToken = null;
-        if (token != null && token.startsWith("Bearer ")) {
-            jwtToken = token.substring(7);
-            try {
-                claims = jwtTokenUtil.getAllClaimsFromToken(jwtToken);
-            } catch (IllegalArgumentException e) {
-                System.out.println("Unable to get JWT Token");
-            } catch (ExpiredJwtException e) {
-                System.out.println("JWT Token has expired");
-            }
-        } else {
-            throw new ResponseStatusException(HttpStatus.EXPECTATION_FAILED, "JWT Token does not begin with Bearer String");
-        }
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
         return ResponseEntity.ok(boardService.getAllBoard(claims));
-    }
-
-    private boolean isOwner(String oid, String boardId) {
-        Board board = boardRepository.findById(boardId)
-                .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
-        return board.getOid().equals(oid);
     }
 
     @GetMapping("/{id}")
@@ -68,15 +51,11 @@ public class BoardController {
                                                          @PathVariable String id) {
         Board board = getBoardOrThrow(id);
 
-        // If the board is public, return the board without requiring a token
         if (isPublicBoard(board)) {
             return ResponseEntity.ok(boardService.getBoardById(id));
         }
 
-        // For private boards, JWT token is required
-        Claims claims = validateToken(token);
-
-        // Validate ownership
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
         validateOwnership(claims, id);
 
         return ResponseEntity.ok(boardService.getBoardById(id));
@@ -89,8 +68,7 @@ public class BoardController {
             throw new BoardNameNobodyException("Require name to create board");
         }
 
-        Claims claims = validateToken(token);
-
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
         return ResponseEntity.status(HttpStatus.CREATED).body(boardService.createBoard(claims, boardRequestDTO));
     }
 
@@ -98,7 +76,6 @@ public class BoardController {
     public ResponseEntity<StatusLimitResponseDTO> updateBoardLimit(@PathVariable String id, @RequestBody @Valid BoardLimitRequestDTO boardDTO,
                                                                    @RequestHeader(value = "Authorization") String token) {
         Board board = validateBoardAndOwnership(id, token);
-
         return ResponseEntity.status(HttpStatus.OK).body(boardService.updateBoardLimit(id, boardDTO));
     }
 
@@ -106,46 +83,19 @@ public class BoardController {
     public ResponseEntity<BoardVisibilityResponseDTO> updateBoardVisibility(@PathVariable String id, @RequestBody @Valid BoardVisibilityRequestDTO boardDTO,
                                                                             @RequestHeader(value = "Authorization") String token) {
         Board board = validateBoardAndOwnership(id, token);
-
         return ResponseEntity.status(HttpStatus.OK).body(boardService.updateBoardVisibility(id, boardDTO));
     }
 
     private Board validateBoardAndOwnership(String boardId, String token) {
         Board board = getBoardOrThrow(boardId);
-        Claims claims = validateTokenAndOwnership(token, boardId);
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+        validateOwnership(claims, boardId);
         return board;
-    }
-
-    private Claims validateTokenAndOwnership(String token, String boardId) {
-        if (token == null || !token.startsWith("Bearer ")) {
-            throw new ForbiddenException("Authentication required to access this board.");
-        }
-
-        String jwtToken = token.substring(7);
-        Claims claims;
-        try {
-            claims = jwtTokenUtil.getAllClaimsFromToken(jwtToken);
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unable to get JWT Token");
-        } catch (ExpiredJwtException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "JWT Token has expired");
-        }
-
-        String oid = (String) claims.get("oid");
-        if (!isOwner(oid, boardId)) {
-            throw new ForbiddenException("You are not allowed to modify this board.");
-        }
-
-        return claims;
     }
 
     private Board getBoardOrThrow(String boardId) {
         return boardRepository.findById(boardId)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
-    }
-
-    private Claims validateToken(String token) {
-        return Utils.getClaims(token, jwtTokenUtil);
     }
 
     private void validateOwnership(Claims claims, String boardId) {
@@ -159,4 +109,9 @@ public class BoardController {
         return board.getVisibility().equalsIgnoreCase("PUBLIC");
     }
 
+    private boolean isOwner(String oid, String boardId) {
+        Board board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
+        return board.getOid().equals(oid);
+    }
 }

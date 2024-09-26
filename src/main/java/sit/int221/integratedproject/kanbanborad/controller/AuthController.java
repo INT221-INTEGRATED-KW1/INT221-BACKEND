@@ -17,6 +17,7 @@ import sit.int221.integratedproject.kanbanborad.dtos.response.AuthenticateUser;
 import sit.int221.integratedproject.kanbanborad.dtos.response.LoginResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.RefreshToken;
 import sit.int221.integratedproject.kanbanborad.exceptions.GeneralException;
+import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.RefreshTokenRepository;
 import sit.int221.integratedproject.kanbanborad.services.AuthService;
 import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
@@ -39,27 +40,12 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<Object> login(@RequestBody @Valid JwtRequestUser jwtRequestUser) {
         try {
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(jwtRequestUser.getUserName(), jwtRequestUser.getPassword())
-            );
-            // Generate the access token
-            String accessToken = jwtTokenUtil.generateToken(authentication);
-
-            // Generate the refresh token
-            String refreshToken = jwtTokenUtil.generateRefreshToken(authentication);
-
-            // Save refresh token to the database
-            var authenticatedUser = (AuthenticateUser) authentication.getPrincipal();
-            RefreshToken refreshTokenEntity = new RefreshToken(null, refreshToken, authenticatedUser.oid(), String.valueOf(System.currentTimeMillis()));
-            refreshTokenRepository.save(refreshTokenEntity);
-
-            // Return both tokens in the response
-            LoginResponseDTO responseDTO = new LoginResponseDTO(accessToken, refreshToken);
+            // Delegate the login logic to the AuthService
+            LoginResponseDTO responseDTO = authService.login(jwtRequestUser);
             return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
-        } catch (AuthenticationException e) {
-            System.out.println(jwtRequestUser);
+        } catch (UsernameNotFoundException e) {
             throw new UsernameNotFoundException("Username or Password is incorrect");
-        } catch (Exception e) {
+        } catch (GeneralException e) {
             throw new GeneralException("There is a problem. Please try again later.");
         }
     }
@@ -72,11 +58,20 @@ public class AuthController {
 
         if (token != null && token.startsWith("Bearer ")) {
             jwtToken = token.substring(7);
+
+            // Check if the refresh token exists in the database
+            var refreshToken = refreshTokenRepository.findRefreshTokenByToken(jwtToken);
+
+            if (refreshToken == null) {
+                throw new ItemNotFoundException("Refresh token not found");
+            }
+
             try {
                 // Validate refresh token
                 if (!jwtTokenUtil.validateRefreshToken(jwtToken)) {
                     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired refresh token");
                 }
+
                 claims = jwtTokenUtil.getAllClaimsFromToken(jwtToken);
             } catch (IllegalArgumentException e) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unable to get JWT Token");

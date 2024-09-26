@@ -1,3 +1,4 @@
+
 package sit.int221.integratedproject.kanbanborad.filter;
 
 import io.jsonwebtoken.ExpiredJwtException;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import sit.int221.integratedproject.kanbanborad.dtos.response.AuthenticateUser;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
+import sit.int221.integratedproject.kanbanborad.enumeration.JwtErrorType;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.exceptions.TokenIsMissingException;
 import sit.int221.integratedproject.kanbanborad.exceptions.TokenNotWellException;
@@ -47,45 +49,30 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         // Get request URI
         String requestURI = request.getRequestURI();
-        if (requestURI.equals("/login") || requestURI.equals("/token") ||
-                requestURI.matches("/v3/boards/[A-Za-z0-9]+/statuses(/\\d+)?") ||
-                requestURI.matches("/v3/boards/[A-Za-z0-9]+/tasks(/\\d+)?") ||
-                requestURI.matches("/v3/boards/[A-Za-z0-9]+") ||
-                requestURI.matches("/v3/boards/[A-Za-z0-9]+/maximum-status")) {
+        if (requestURI.equals("/login") || requestURI.equals("/token")) {
             chain.doFilter(request, response);
             return;
         }
 
-        // Extract the board ID only for board-related endpoints
-        String boardId = extractBoardIdFromURI(requestURI);
+        String method = request.getMethod();
 
-        // For endpoints that require a board ID (like getting statuses), handle the board visibility check
-        if (boardId != null) {
-            try {
-                Board board = boardRepository.findById(boardId)
-                        .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
+        boolean isPublicGetEndpoint = method.equalsIgnoreCase("GET") &&
+                (requestURI.matches("/v3/boards/[A-Za-z0-9]+") ||
+                        requestURI.matches("/v3/boards/[A-Za-z0-9]+/statuses(/\\d+)?") ||
+                        requestURI.matches("/v3/boards/[A-Za-z0-9]+/tasks(/\\d+)?"));
 
-                if (board.getVisibility().equalsIgnoreCase("PUBLIC")) {
-                    chain.doFilter(request, response);
-                    return;
-                }
-            } catch (ItemNotFoundException e) {
-                // Return 404 if the board does not exist
-                handleException(response, e.getMessage(), HttpStatus.NOT_FOUND, request.getRequestURI());
-                return; // Stop further processing
-            }
-        } else if (!requestURI.equals("/v3/boards")) {
-            // Handle the case where the board ID is missing and it's not a boards endpoint
-            handleException(response, "Board ID is missing in the request", HttpStatus.BAD_REQUEST, request.getRequestURI());
-            return; // Stop further processing
+        // If the endpoint is public GET, allow access without token
+        if (isPublicGetEndpoint) {
+            chain.doFilter(request, response);
+            return;
         }
 
         try {
-            // Process the JWT token
+            // Check if the token exists and starts with Bearer
             if (requestTokenHeader != null && requestTokenHeader.startsWith("Bearer ")) {
                 jwtToken = requestTokenHeader.substring(7);
 
-                // Manually check if the JWT token has three parts
+                // Check if the token has 3 parts
                 String[] tokenParts = jwtToken.split("\\.");
                 if (tokenParts.length == 3) {
                     oid = jwtTokenUtil.getOidFromToken(jwtToken);
@@ -98,7 +85,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                             usernamePasswordAuthenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                             SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
                         } else {
-                            System.out.println("Token validation failed");
+                            throw new SignatureException("Token validation failed");
                         }
                     }
                 } else {
@@ -110,37 +97,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             chain.doFilter(request, response);
         } catch (ExpiredJwtException e) {
-            handleException(response, "JWT Token has expired", HttpStatus.UNAUTHORIZED, request.getRequestURI());
-        } catch (MalformedJwtException e) {
-            handleException(response, "JWT Token has been tampered with", HttpStatus.UNAUTHORIZED, request.getRequestURI());
+            handleException(JwtErrorType.EXPIRED_TOKEN,response, "JWT Token has expired", HttpStatus.UNAUTHORIZED, request.getRequestURI());
+        } catch (MalformedJwtException | SignatureException e) {
+            handleException(JwtErrorType.TAMPERED_TOKEN,response, "JWT Token has been tampered with", HttpStatus.UNAUTHORIZED, request.getRequestURI());
         } catch (TokenNotWellException e) {
-            handleException(response, "JWT Token not well-formed", HttpStatus.UNAUTHORIZED, request.getRequestURI());
+            handleException(JwtErrorType.MALFORMED_TOKEN, response, "JWT Token not well-formed", HttpStatus.UNAUTHORIZED, request.getRequestURI());
         } catch (TokenIsMissingException e) {
-            handleException(response, "JWT Token is missing", HttpStatus.UNAUTHORIZED, request.getRequestURI());
-        } catch (SignatureException e) {
-            handleException(response, "JWT Token has been tampered with", HttpStatus.UNAUTHORIZED, request.getRequestURI());
+            handleException(JwtErrorType.MISSING_TOKEN, response, "JWT Token is missing", HttpStatus.UNAUTHORIZED, request.getRequestURI());
         }
     }
 
-    private void handleException(HttpServletResponse response, String message, HttpStatus status, String instance)
+    private void handleException(JwtErrorType type, HttpServletResponse response, String message, HttpStatus status, String instance)
             throws IOException {
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        String jsonResponse = String.format("{\"status\": %d, \"message\": \"%s\", \"instance\": \"uri=%s\"}",
-                status.value(), message, instance);
+        String jsonResponse = String.format("{\"type\": \"%s\", \"status\": %d, \"message\": \"%s\", \"instance\": \"uri=%s\"}",
+               type.name() ,status.value(), message, instance);
         response.getWriter().write(jsonResponse);
-    }
-
-    private String extractBoardIdFromURI(String uri) {
-        // Split the URI by "/"
-        String[] parts = uri.split("/");
-
-        // Check if there are enough parts to extract the board ID (4th part in the URI)
-        if (parts.length > 3) {
-            return parts[3]; // The board ID is the 4th part of the URI (index 3)
-        }
-
-        // Return null if there are not enough parts
-        return null;
     }
 }
