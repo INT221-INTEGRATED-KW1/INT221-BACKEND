@@ -6,16 +6,11 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import sit.int221.integratedproject.kanbanborad.dtos.request.JwtRequestUser;
-import sit.int221.integratedproject.kanbanborad.dtos.response.AuthenticateUser;
 import sit.int221.integratedproject.kanbanborad.dtos.response.LoginResponseDTO;
-import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.RefreshToken;
 import sit.int221.integratedproject.kanbanborad.exceptions.GeneralException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.RefreshTokenRepository;
@@ -23,7 +18,8 @@ import sit.int221.integratedproject.kanbanborad.services.AuthService;
 import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
 
 @RestController
-@CrossOrigin(origins = {"http://ip23kw1.sit.kmutt.ac.th", "http://intproj23.sit.kmutt.ac.th"})
+@CrossOrigin(origins = {"http://ip23kw1.sit.kmutt.ac.th", "http://intproj23.sit.kmutt.ac.th",
+        "https://ip23kw1.sit.kmutt.ac.th", "https://intproj23.sit.kmutt.ac.th"})
 public class AuthController {
     private final JwtTokenUtil jwtTokenUtil;
     private final AuthenticationManager authenticationManager;
