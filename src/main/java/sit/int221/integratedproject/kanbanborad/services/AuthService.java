@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import sit.int221.integratedproject.kanbanborad.dtos.request.JwtRequestUser;
 import sit.int221.integratedproject.kanbanborad.dtos.response.AuthenticateUser;
 import sit.int221.integratedproject.kanbanborad.dtos.response.LoginResponseDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.response.RefreshTokenResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.RefreshToken;
 import sit.int221.integratedproject.kanbanborad.exceptions.GeneralException;
@@ -59,18 +60,18 @@ public class AuthService {
         }
     }
 
-    public LoginResponseDTO refreshAccessToken(Claims claims) {
+    public RefreshTokenResponseDTO refreshAccessToken(Claims claims) {
         String oid = claims.get("oid", String.class);
 
         User user = userRepository.findByOid(oid)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
+
         // Create new access token
         Authentication authentication = new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword());
         String newAccessToken = jwtTokenUtil.generateToken(authentication);
-        String newRefreshToken = jwtTokenUtil.generateRefreshToken(authentication);
 
-        return new LoginResponseDTO(newAccessToken, newRefreshToken);
+        return new RefreshTokenResponseDTO(newAccessToken);
     }
 
 }
