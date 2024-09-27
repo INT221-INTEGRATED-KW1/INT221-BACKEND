@@ -55,17 +55,15 @@ public class AuthController {
         if (token != null && token.startsWith("Bearer ")) {
             jwtToken = token.substring(7);
 
-            // Check if the refresh token exists in the database
-            var refreshToken = refreshTokenRepository.findRefreshTokenByToken(jwtToken);
-
-            if (refreshToken == null) {
-                throw new ItemNotFoundException("Refresh token not found");
-            }
-
             try {
                 // Validate refresh token
                 if (!jwtTokenUtil.validateRefreshToken(jwtToken)) {
                     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired refresh token");
+                }
+                var refreshToken = refreshTokenRepository.findRefreshTokenByToken(jwtToken);
+
+                if (refreshToken == null) {
+                    throw new ItemNotFoundException("Refresh token not found");
                 }
 
                 claims = jwtTokenUtil.getAllClaimsFromToken(jwtToken);
