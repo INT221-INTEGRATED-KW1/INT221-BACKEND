@@ -67,10 +67,14 @@ public class StatusController {
     }
 
     @PostMapping("/{id}/statuses")
-    public ResponseEntity<StatusResponseDetailDTO> addNewStatus(@RequestBody @Valid StatusRequestDTO statusDTO,
+    public ResponseEntity<StatusResponseDetailDTO> addNewStatus(@RequestBody(required = false) StatusRequestDTO statusDTO,
                                                                 @PathVariable String id,
                                                                 @RequestHeader(value = "Authorization") String token) {
         Board board = validateBoardAndOwnership(id, token);
+
+        if (statusDTO == null) {
+            throw new BadRequestException("Missing required fields.");
+        }
 
         // Proceed to add the new status
         return ResponseEntity.status(HttpStatus.CREATED).body(statusService.createNewStatus(statusDTO, id));
@@ -78,10 +82,14 @@ public class StatusController {
 
     @PutMapping("/{id}/statuses/{statusId}")
     public ResponseEntity<StatusResponseDetailDTO> updateStatus(@PathVariable String id,
-                                                                @RequestBody @Valid StatusRequestDTO statusDTO,
+                                                                @RequestBody(required = false) StatusRequestDTO statusDTO,
                                                                 @PathVariable Integer statusId,
                                                                 @RequestHeader(value = "Authorization") String token) {
         Board board = validateBoardAndOwnership(id, token);
+
+        if (statusDTO == null) {
+            throw new BadRequestException("Missing required fields.");
+        }
 
         return ResponseEntity.status(HttpStatus.OK).body(statusService.updateStatus(id, statusDTO, statusId));
     }

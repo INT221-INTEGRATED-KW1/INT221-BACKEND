@@ -16,6 +16,7 @@ import sit.int221.integratedproject.kanbanborad.dtos.response.BoardResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.BoardVisibilityResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusLimitResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
+import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.BoardNameNobodyException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
@@ -77,13 +78,20 @@ public class BoardController {
     public ResponseEntity<StatusLimitResponseDTO> updateBoardLimit(@PathVariable String id, @RequestBody @Valid BoardLimitRequestDTO boardDTO,
                                                                    @RequestHeader(value = "Authorization") String token) {
         Board board = validateBoardAndOwnership(id, token);
+
+
         return ResponseEntity.status(HttpStatus.OK).body(boardService.updateBoardLimit(id, boardDTO));
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<BoardVisibilityResponseDTO> updateBoardVisibility(@PathVariable String id, @RequestBody @Valid BoardVisibilityRequestDTO boardDTO,
+    public ResponseEntity<BoardVisibilityResponseDTO> updateBoardVisibility(@PathVariable String id, @RequestBody(required = false) BoardVisibilityRequestDTO boardDTO,
                                                                             @RequestHeader(value = "Authorization") String token) {
         Board board = validateBoardAndOwnership(id, token);
+
+        if (boardDTO == null) {
+            throw new BadRequestException("Missing required fields.");
+        }
+
         return ResponseEntity.status(HttpStatus.OK).body(boardService.updateBoardVisibility(id, boardDTO));
     }
 

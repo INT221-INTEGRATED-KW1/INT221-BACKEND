@@ -12,6 +12,7 @@ import sit.int221.integratedproject.kanbanborad.dtos.response.TaskAddEditRespons
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskDetailResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
+import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
@@ -89,20 +90,28 @@ public class TaskController {
     }
 
     @PostMapping("/{id}/tasks")
-    public ResponseEntity<TaskAddEditResponseDTO> addNewTask(@RequestBody @Valid TaskRequestDTO taskDTO,
+    public ResponseEntity<TaskAddEditResponseDTO> addNewTask(@RequestBody(required = false) TaskRequestDTO taskDTO,
                                                              @PathVariable String id,
                                                              @RequestHeader(value = "Authorization") String token) {
         Board board = validateBoardAndOwnership(id, token);
+
+        if (taskDTO == null) {
+            throw new BadRequestException("Missing required fields.");
+        }
 
         return ResponseEntity.status(HttpStatus.CREATED).body(taskService.createNewTask(taskDTO, id));
     }
 
     @PutMapping("/{id}/tasks/{taskId}")
     public ResponseEntity<TaskAddEditResponseDTO> updateTask(@PathVariable String id,
-                                                             @RequestBody @Valid TaskRequestDTO taskDTO,
+                                                             @RequestBody(required = false) TaskRequestDTO taskDTO,
                                                              @PathVariable Integer taskId,
                                                              @RequestHeader(value = "Authorization") String token) {
         Board board = validateBoardAndOwnership(id, token);
+
+        if (taskDTO == null) {
+            throw new BadRequestException("Missing required fields.");
+        }
 
         return ResponseEntity.status(HttpStatus.OK).body(taskService.updateTask(id, taskDTO, taskId));
     }
