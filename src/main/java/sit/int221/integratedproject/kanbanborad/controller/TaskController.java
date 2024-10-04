@@ -12,16 +12,19 @@ import sit.int221.integratedproject.kanbanborad.dtos.response.TaskAddEditRespons
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskDetailResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
+import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Collaborator;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
+import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.CollaboratorRepository;
 import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
 import sit.int221.integratedproject.kanbanborad.services.StatusService;
 import sit.int221.integratedproject.kanbanborad.services.TaskService;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/v3/boards")
@@ -31,12 +34,14 @@ public class TaskController {
     private final BoardRepository boardRepository;
     private final StatusService statusService;
     private final JwtTokenUtil jwtTokenUtil;
+    private final CollaboratorRepository collaboratorRepository;
 
-    public TaskController(TaskService taskService, BoardRepository boardRepository, StatusService statusService, JwtTokenUtil jwtTokenUtil) {
+    public TaskController(TaskService taskService, BoardRepository boardRepository, StatusService statusService, JwtTokenUtil jwtTokenUtil, CollaboratorRepository collaboratorRepository) {
         this.taskService = taskService;
         this.boardRepository = boardRepository;
         this.statusService = statusService;
         this.jwtTokenUtil = jwtTokenUtil;
+        this.collaboratorRepository = collaboratorRepository;
     }
 
     @GetMapping("/{id}/tasks")
@@ -55,6 +60,7 @@ public class TaskController {
         Claims claims = validateToken(token);
 
         validateOwnership(claims, id);
+        System.out.println("test1");
 
         return ResponseEntity.status(HttpStatus.OK).body(tasks);
     }
@@ -84,12 +90,13 @@ public class TaskController {
         Claims claims = validateToken(token);
 
         validateOwnership(claims, id);
+        System.out.println("test2");
 
         return ResponseEntity.status(HttpStatus.OK).body(taskService.findTaskById(claims, id, taskId));
     }
 
     @PostMapping("/{id}/tasks")
-    public ResponseEntity<TaskAddEditResponseDTO> addNewTask(@RequestBody(required = false) TaskRequestDTO taskDTO,
+    public ResponseEntity<TaskAddEditResponseDTO> addNewTask(@RequestBody(required = false) @Valid TaskRequestDTO taskDTO,
                                                              @PathVariable String id,
                                                              @RequestHeader(value = "Authorization") String token) {
         Board board = validateBoardAndOwnership(id, token);
@@ -103,7 +110,7 @@ public class TaskController {
 
     @PutMapping("/{id}/tasks/{taskId}")
     public ResponseEntity<TaskAddEditResponseDTO> updateTask(@PathVariable String id,
-                                                             @RequestBody(required = false) TaskRequestDTO taskDTO,
+                                                             @RequestBody(required = false) @Valid TaskRequestDTO taskDTO,
                                                              @PathVariable Integer taskId,
                                                              @RequestHeader(value = "Authorization") String token) {
         Board board = validateBoardAndOwnership(id, token);
@@ -134,7 +141,7 @@ public class TaskController {
 
     private void validateOwnership(Claims claims, String boardId) {
         String oid = (String) claims.get("oid");
-        if (!isOwner(oid, boardId)) {
+        if (!isOwner(oid, boardId) && !isCollaborator(oid, boardId)) {
             throw new ForbiddenException("You are not allowed to access this board.");
         }
     }
@@ -176,6 +183,12 @@ public class TaskController {
         Board board = getBoardOrThrow(boardId);
         Claims claims = validateTokenAndOwnership(token, boardId);
         return board;
+    }
+
+    private boolean isCollaborator(String oid, String boardId) {
+        // เช็คจาก database ว่าผู้ใช้มีสิทธิ์เป็น collaborator หรือไม่
+        Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
+        return collaborator.isPresent();
     }
 
 }

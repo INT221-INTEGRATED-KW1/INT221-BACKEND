@@ -1,5 +1,6 @@
 package sit.int221.integratedproject.kanbanborad.entities.kanbanboard;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -10,6 +11,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,12 +35,21 @@ public class Board {
     private String name;
     private Boolean limitMaximumStatus;
     private String visibility;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    @Column(insertable = false, updatable = false)
+    private Timestamp createdOn;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    @Column(insertable = false, updatable = false)
+    private Timestamp updatedOn;
     @JsonIgnore
     @OneToMany(mappedBy = "board")
     private List<Status> statuses = new ArrayList<>();
     @JsonIgnore
     @OneToMany(mappedBy = "board")
     private List<Task> tasks = new ArrayList<>();
+    @JsonIgnore
+    @OneToMany(mappedBy = "board")
+    private List<Collaborator> collaborators = new ArrayList<>();
     @PrePersist
     public void generateId() {
         if (this.id == null || this.id.isEmpty()) {

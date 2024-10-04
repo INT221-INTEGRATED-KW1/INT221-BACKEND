@@ -16,6 +16,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
+import java.util.Map;
+
 
 @RestControllerAdvice
 public class GlobalExceptionHandling {
@@ -82,6 +85,12 @@ public class GlobalExceptionHandling {
         return buildErrorResponse(exception,exception.getMessage() ,HttpStatus.NOT_FOUND, request);
     }
 
+    @ExceptionHandler(ConflictException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ResponseEntity<ErrorResponse> handleConflictException(ConflictException exception, WebRequest request) {
+        return buildErrorResponse(exception,exception.getMessage() ,HttpStatus.CONFLICT, request);
+    }
+
     @ExceptionHandler(MissingRequestHeaderException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ResponseEntity<ErrorResponse> handleMissingRequestException(MissingRequestHeaderException exception, WebRequest request) {
@@ -110,6 +119,16 @@ public class GlobalExceptionHandling {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ResponseEntity<ErrorResponse> handleStatusUniqueException(StatusUniqueException exception, WebRequest request) {
         return buildErrorResponse(exception, exception.getMessage(), HttpStatus.BAD_REQUEST, request);
+    }
+
+    @ExceptionHandler(JwtException.class)
+    public ResponseEntity<Map<String, Object>> handleJwtException(JwtException ex) {
+        Map<String, Object> errorBody = new HashMap<>();
+        errorBody.put("type", ex.getErrorType().name());
+        errorBody.put("status", HttpStatus.UNAUTHORIZED.value());
+        errorBody.put("message", ex.getMessage());
+
+        return new ResponseEntity<>(errorBody, HttpStatus.UNAUTHORIZED);
     }
 
     @ExceptionHandler(BoardNameNobodyException.class)

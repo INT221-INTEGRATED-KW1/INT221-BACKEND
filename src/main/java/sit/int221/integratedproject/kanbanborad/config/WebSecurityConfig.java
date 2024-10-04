@@ -33,7 +33,7 @@ public class WebSecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity.csrf(csrf -> csrf.disable())
                 .authorizeRequests(authorize -> authorize
-                        .requestMatchers("/login", "/token", "/v3/boards/*","/v3/boards/*/tasks", "/v3/boards/*/statuses",
+                        .requestMatchers("/login", "/token", "/v3/boards/*", "/v3/boards/*/collabs","/v3/boards/*/collabs/*" ,"/v3/boards/*/tasks", "/v3/boards/*/statuses",
                                 "/v3/boards/*/tasks/*", "/v3/boards/*/statuses/*", "/v3/boards/*/maximum-status").permitAll()  // อนุญาต GET tasks, statuses สำหรับทุกคน
                         .anyRequest().authenticated())
                 .httpBasic(withDefaults());

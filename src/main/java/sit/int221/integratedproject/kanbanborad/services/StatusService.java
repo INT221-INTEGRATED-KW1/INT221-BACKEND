@@ -8,6 +8,7 @@ import sit.int221.integratedproject.kanbanborad.dtos.request.StatusRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.StatusResponseDetailDTO;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
+import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Collaborator;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Status;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Task;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
@@ -16,12 +17,14 @@ import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException
 import sit.int221.integratedproject.kanbanborad.exceptions.StatusUniqueException;
 import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
+import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.CollaboratorRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.StatusRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.TaskRepository;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class StatusService {
@@ -30,14 +33,16 @@ public class StatusService {
     private final ModelMapper modelMapper;
     private final BoardRepository boardRepository;
     private final UserRepository userRepository;
+    private final CollaboratorRepository collaboratorRepository;
 
     public StatusService(TaskRepository taskRepository, StatusRepository statusRepository
-            , ModelMapper modelMapper, BoardRepository boardRepository, UserRepository userRepository) {
+            , ModelMapper modelMapper, BoardRepository boardRepository, UserRepository userRepository, CollaboratorRepository collaboratorRepository) {
         this.taskRepository = taskRepository;
         this.statusRepository = statusRepository;
         this.modelMapper = modelMapper;
         this.boardRepository = boardRepository;
         this.userRepository = userRepository;
+        this.collaboratorRepository = collaboratorRepository;
     }
 
     // Helper method to check if the user is the owner
@@ -91,7 +96,7 @@ public class StatusService {
 
             // Check ownership
             String oid = (String) claims.get("oid");
-            if (!isOwner(oid, id)) {
+            if (!isOwner(oid, id) && !isCollaborator(oid, id)) {
                 throw new ForbiddenException("You are not allowed to access this board.");
             }
         }
@@ -229,5 +234,11 @@ public class StatusService {
     private Board findBoardByIdAndValidate(String id) {
         return boardRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
+    }
+
+    private boolean isCollaborator(String oid, String boardId) {
+        // เช็คจาก database ว่าผู้ใช้มีสิทธิ์เป็น collaborator หรือไม่
+        Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
+        return collaborator.isPresent();
     }
 }

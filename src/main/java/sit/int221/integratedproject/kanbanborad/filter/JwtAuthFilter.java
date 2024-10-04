@@ -58,6 +58,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         boolean isPublicGetEndpoint = method.equalsIgnoreCase("GET") &&
                 (requestURI.matches("/v3/boards/[A-Za-z0-9]+") ||
+                        requestURI.matches("/v3/boards/[A-Za-z0-9]+/collabs") ||
+                        requestURI.matches("/v3/boards/[A-Za-z0-9]+/collabs/[A-Za-z0-9]+") ||
                         requestURI.matches("/v3/boards/[A-Za-z0-9]+/statuses(/\\d+)?") ||
                         requestURI.matches("/v3/boards/[A-Za-z0-9]+/tasks(/\\d+)?"));
 
