@@ -12,10 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-import sit.int221.integratedproject.kanbanborad.dtos.request.BoardLimitRequestDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.request.BoardRequestDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.request.BoardVisibilityRequestDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.request.CollaboratorRequestDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.request.*;
 import sit.int221.integratedproject.kanbanborad.dtos.response.*;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
 import sit.int221.integratedproject.kanbanborad.enumeration.JwtErrorType;
@@ -30,6 +27,8 @@ import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
 import java.util.List;
+
+import static org.springframework.data.jpa.domain.AbstractPersistable_.id;
 
 @RestController
 @RequestMapping("/v3/boards")
@@ -114,6 +113,29 @@ public class BoardController {
 
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDTO);
     }
+
+
+    @PatchMapping("/{id}/collabs/{collabOid}")
+    public ResponseEntity<CollaboratorResponseDTO> updateBoardAccessRight(
+            @RequestHeader(value = "Authorization") String token,
+            @PathVariable String id,
+            @PathVariable String collabOid,
+            @RequestBody(required = false) @Valid BoardAccessRightRequestDTO boardAccessRightRequestDTO) {
+        CollaboratorResponseDTO responseDTO = collaboratorService.updateBoardAccessRight(id, collabOid,token, boardAccessRightRequestDTO);
+
+        return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
+    }
+
+    @DeleteMapping("/{id}/collabs/{collabOid}")
+    public ResponseEntity<CollaboratorResponseDTO> deleteCollaborator(
+            @RequestHeader(value = "Authorization") String token,
+            @PathVariable String id,
+            @PathVariable String collabOid) {
+        CollaboratorResponseDTO responseDTO = collaboratorService.deleteBoardCollaborator(id, collabOid ,token);
+
+        return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
+    }
+
 
     @PostMapping("")
     public ResponseEntity<BoardResponseDTO> createBoard(@RequestHeader("Authorization") String token,

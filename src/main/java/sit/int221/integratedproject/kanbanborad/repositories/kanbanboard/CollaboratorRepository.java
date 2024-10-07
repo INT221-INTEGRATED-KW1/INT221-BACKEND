@@ -12,5 +12,6 @@ public interface CollaboratorRepository extends JpaRepository<Collaborator, Long
     Optional<Collaborator> findByBoardIdAndOid(String boardId, String oid);
     Optional<Collaborator> findByBoardAndEmail(Board board, String email);
     Optional<Collaborator> findByOidAndBoardId(String oid, String boardId);
+    Collaborator findByBoardAndOid(Board board, String oid);
     boolean existsByBoardIdAndOid(String boardId, String oid);
 }

@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import sit.int221.integratedproject.kanbanborad.dtos.request.BoardAccessRightRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.request.CollaboratorRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.CollaboratorResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
@@ -101,6 +102,77 @@ public class CollaboratorService {
         entityManager.refresh(savedCollaborator);
 
         return convertToCollaboratorDTO(savedCollaborator);
+    }
+
+    @Transactional
+    public CollaboratorResponseDTO updateBoardAccessRight(String id, String collabOid, String token, BoardAccessRightRequestDTO boardAccessRightRequestDTO) {
+        // Handle missing request body (400 error)
+        if (boardAccessRightRequestDTO == null) {
+            throw new BadRequestException("Request body is required.");
+        }
+
+        // Validate access_right field (400 error)
+        if (!List.of("READ", "WRITE").contains(boardAccessRightRequestDTO.getAccess_right().toUpperCase())) {
+            throw new BadRequestException("Invalid access right. Must be 'READ' or 'WRITE'.");
+        }
+
+        // Validate the token and fetch claims
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+        Board board = boardRepository.findById(id)
+                .orElseThrow(() -> new ItemNotFoundException("Board ID " + id + " not found."));
+
+        // Check if the token owner is the board owner (403 error)
+        validateOwnership(claims, id);
+
+        // Check if the email exists (404 error)
+        User newCollaborator = userRepository.findByOid(collabOid)
+                .orElseThrow(() -> new ItemNotFoundException("User with oid " + collabOid + " not found in shared database."));
+
+        Collaborator existingCollaborator = collaboratorRepository.findByBoardAndOid(board, collabOid);
+        if (existingCollaborator == null) {
+            throw new ItemNotFoundException("Collaborator with OID " + collabOid + " is not a collaborator on this board.");
+        }
+
+        existingCollaborator.setAccessRight(boardAccessRightRequestDTO.getAccess_right());
+
+        Collaborator updatedCollaborator = collaboratorRepository.save(existingCollaborator);
+
+        return convertToCollaboratorDTO(updatedCollaborator);
+    }
+
+    @Transactional
+    public CollaboratorResponseDTO deleteBoardCollaborator(String id, String collabOid, String token) {
+        // Validate the token and fetch claims
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+
+        // Check if the board exists (404 error)
+        Board board = boardRepository.findById(id)
+                .orElseThrow(() -> new ItemNotFoundException("Board ID " + id + " not found."));
+
+        // Check if the token owner is either the board owner or a collaborator (403 error)
+        String oid = claims.get("oid", String.class);
+        boolean isBoardOwner = oid.equals(board.getOid());
+        Collaborator tokenCollaborator = collaboratorRepository.findByBoardAndOid(board, oid);
+
+        if (!isBoardOwner && tokenCollaborator == null) {
+            throw new ForbiddenException("You do not have permission to delete collaborators on this board.");
+        }
+
+        // Check if the collaborator exists (404 error)
+        Collaborator existingCollaborator = collaboratorRepository.findByBoardAndOid(board, collabOid);
+        if (existingCollaborator == null) {
+            throw new ItemNotFoundException("Collaborator with OID " + collabOid + " is not a collaborator on this board.");
+        }
+
+        // Prevent self-deletion (200 error if token owner == collabOid)
+        if (oid.equals(collabOid)) {
+            return convertToCollaboratorDTO(existingCollaborator); // No changes, return current state
+        }
+
+        // Remove collaborator from the board
+        collaboratorRepository.delete(existingCollaborator);
+
+        return convertToCollaboratorDTO(existingCollaborator);
     }
 
     private void validateOwnership(Claims claims, String boardId) {

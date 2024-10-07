@@ -146,7 +146,7 @@ public class StatusController {
         }
 
         String oid = (String) claims.get("oid");
-        if (!isOwner(oid, boardId) ) {
+        if (!isOwner(oid, boardId) && !hasWriteAccess(oid, boardId)) {
             throw new ForbiddenException("You are not allowed to modify this board.");
         }
 
@@ -184,5 +184,16 @@ public class StatusController {
         // เช็คจาก database ว่าผู้ใช้มีสิทธิ์เป็น collaborator หรือไม่
         Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
         return collaborator.isPresent();
+    }
+
+    private boolean hasWriteAccess(String oid, String boardId) {
+        // Fetch collaborator and ensure they have WRITE access
+        Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
+
+        if (collaborator.isPresent()) {
+            return collaborator.get().getAccessRight().equalsIgnoreCase("WRITE");
+        }
+
+        return false;
     }
 }
