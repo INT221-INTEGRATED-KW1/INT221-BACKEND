@@ -97,20 +97,29 @@ public class BoardService {
 
         // แปลง personalBoards และ collabBoards เป็น BoardResponseDTO พร้อมดึงข้อมูล owner
         List<BoardResponseDTO> personalBoardDTOs = personalBoards.stream()
-                .map(board -> new BoardResponseDTO(
-                        board.getId(),
-                        board.getName(),
-                        convertToOwnerDTO(user), // ดึงข้อมูล owner จาก User
-                        board.getVisibility()))
-                .collect(Collectors.toList());
+                .map(board -> {
+                            return new BoardResponseDTO(
+                                    board.getId(),
+                                    board.getName(),
+                                    convertToOwnerDTO(user), // ดึงข้อมูล owner จาก User
+                                    board.getVisibility());
+                        }).collect(Collectors.toList());
 
-        List<BoardResponseDTO> collabBoardDTOs = collabBoards.stream()
-                .map(board -> new BoardResponseDTO(
-                        board.getId(),
-                        board.getName(),
-                        convertToOwnerDTO(userRepository.findById(board.getOid())
-                                .orElseThrow(() -> new ItemNotFoundException("Owner not found!"))), // ดึงข้อมูล owner ของ collab board
-                        board.getVisibility()))
+        List<CollabBoardResponseDTO> collabBoardDTOs = collabBoards.stream()
+                .map(board -> {
+                    String accessRight = collaboratorRepository.findByOidAndBoardId(oid, board.getId())
+                            .map(Collaborator::getAccessRight)
+                            .orElse("No access right");
+
+                    return new CollabBoardResponseDTO(
+                            board.getId(),
+                            board.getName(),
+                            convertToOwnerDTO(userRepository.findById(board.getOid())
+                                    .orElseThrow(() -> new ItemNotFoundException("Owner not found!"))), // ดึงข้อมูล owner ของ collab board
+                            board.getVisibility(),
+                            accessRight // เพิ่ม access_right ใน response
+                    );
+                })
                 .collect(Collectors.toList());
 
         return new BoardsResponseDTO(personalBoardDTOs, collabBoardDTOs);

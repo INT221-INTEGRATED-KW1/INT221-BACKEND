@@ -164,16 +164,10 @@ public class CollaboratorService {
             throw new ItemNotFoundException("Collaborator with OID " + collabOid + " is not a collaborator on this board.");
         }
 
-        // Prevent self-deletion (200 error if token owner == collabOid)
-        if (oid.equals(collabOid)) {
-            return convertToCollaboratorDTO(existingCollaborator); // No changes, return current state
-        }
-
         // Remove collaborator from the board
         collaboratorRepository.delete(existingCollaborator);
-
         return convertToCollaboratorDTO(existingCollaborator);
-    }
+    } 
 
     private void validateOwnership(Claims claims, String boardId) {
         String oid = (String) claims.get("oid");

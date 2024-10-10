@@ -4,12 +4,13 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class BoardsResponseDTO {
-    private List<BoardResponseDTO> personalBoards;
-    private List<CollabBoardResponseDTO> collabBoards;
+public class CollabBoardResponseDTO {
+    private String id;
+    private String name;
+    private OwnerResponseDTO owner;
+    private String visibility;
+    private String access_right;
 }
