@@ -6,6 +6,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sit.int221.integratedproject.kanbanborad.dtos.request.BoardAccessRightRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.request.CollaboratorRequestDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.response.BoardAccessRightResponseDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.response.CollabAddEditResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.CollaboratorResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
@@ -44,26 +46,36 @@ public class CollaboratorService {
     }
 
     @Transactional
-    public CollaboratorResponseDTO addNewCollaborator(String id, String token, CollaboratorRequestDTO collaboratorRequestDTO) {
-        // Handle missing request body (400 error)
-        if (collaboratorRequestDTO == null) {
-            throw new BadRequestException("Request body is required.");
-        }
-
-        // Validate access_right field (400 error)
-        if (!List.of("READ", "WRITE").contains(collaboratorRequestDTO.getAccess_right().toUpperCase())) {
-            throw new BadRequestException("Invalid access right. Must be 'READ' or 'WRITE'.");
-        }
-
-        // Validate the token and fetch claims
+    public CollabAddEditResponseDTO addNewCollaborator(String id, String token, CollaboratorRequestDTO collaboratorRequestDTO) {
+        // Validate the token and fetch claims (do this first)
         Claims claims = Utils.getClaims(token, jwtTokenUtil);
+
+        // Check if the board exists (404 error)
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Board ID " + id + " not found."));
 
         // Check if the token owner is the board owner (403 error)
         validateOwnership(claims, id);
 
-        // Check if the email exists (404 error)
+        // Now handle missing request body (400 error)
+        if (collaboratorRequestDTO == null) {
+            throw new BadRequestException("Request body is required.");
+        }
+
+        // Manually validate 'email' and 'access_right' (400 error if empty)
+        if (collaboratorRequestDTO.getEmail() == null || collaboratorRequestDTO.getEmail().isBlank()) {
+            throw new BadRequestException("Email is required.");
+        }
+        if (collaboratorRequestDTO.getAccess_right() == null || collaboratorRequestDTO.getAccess_right().isBlank()) {
+            throw new BadRequestException("Access right is required.");
+        }
+
+        // Validate access_right field value (400 error)
+        if (!List.of("READ", "WRITE").contains(collaboratorRequestDTO.getAccess_right().toUpperCase())) {
+            throw new BadRequestException("Invalid access right. Must be 'READ' or 'WRITE'.");
+        }
+
+        // Check if the email exists in the user repository (404 error)
         User newCollaborator = userRepository.findByEmail(collaboratorRequestDTO.getEmail())
                 .orElseThrow(() -> new ItemNotFoundException("User with email " + collaboratorRequestDTO.getEmail() + " not found in shared database."));
 
@@ -78,9 +90,8 @@ public class CollaboratorService {
             throw new ConflictException("This email already belongs to an existing collaborator.");
         }
 
-        Optional<UserOwn> existingUserOwn = userOwnRepository.findByOid(newCollaborator.getOid());
-
         // If the user has never logged in, create an entry in users_own
+        Optional<UserOwn> existingUserOwn = userOwnRepository.findByOid(newCollaborator.getOid());
         if (existingUserOwn.isEmpty()) {
             UserOwn userOwn = new UserOwn();
             userOwn.setOid(newCollaborator.getOid());
@@ -101,28 +112,29 @@ public class CollaboratorService {
         Collaborator savedCollaborator = collaboratorRepository.save(collaborator);
         entityManager.refresh(savedCollaborator);
 
-        return convertToCollaboratorDTO(savedCollaborator);
+        return convertToCollabAddEditResponseDTO(board, savedCollaborator);
     }
-
     @Transactional
-    public CollaboratorResponseDTO updateBoardAccessRight(String id, String collabOid, String token, BoardAccessRightRequestDTO boardAccessRightRequestDTO) {
-        // Handle missing request body (400 error)
-        if (boardAccessRightRequestDTO == null) {
-            throw new BadRequestException("Request body is required.");
-        }
-
-        // Validate access_right field (400 error)
-        if (!List.of("READ", "WRITE").contains(boardAccessRightRequestDTO.getAccess_right().toUpperCase())) {
-            throw new BadRequestException("Invalid access right. Must be 'READ' or 'WRITE'.");
-        }
-
-        // Validate the token and fetch claims
+    public BoardAccessRightResponseDTO updateBoardAccessRight(String id, String collabOid, String token, BoardAccessRightRequestDTO boardAccessRightRequestDTO) {
         Claims claims = Utils.getClaims(token, jwtTokenUtil);
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Board ID " + id + " not found."));
 
         // Check if the token owner is the board owner (403 error)
         validateOwnership(claims, id);
+
+        if (boardAccessRightRequestDTO == null) {
+            throw new BadRequestException("Request body is required.");
+        }
+
+        if (boardAccessRightRequestDTO.getAccessRight() == null || boardAccessRightRequestDTO.getAccessRight().isBlank()) {
+            throw new BadRequestException("Access right is required.");
+        }
+
+        // Validate access_right field (400 error)
+        if (!List.of("READ", "WRITE").contains(boardAccessRightRequestDTO.getAccessRight().toUpperCase())) {
+            throw new BadRequestException("Invalid access right. Must be 'READ' or 'WRITE'.");
+        }
 
         // Check if the email exists (404 error)
         User newCollaborator = userRepository.findByOid(collabOid)
@@ -133,11 +145,11 @@ public class CollaboratorService {
             throw new ItemNotFoundException("Collaborator with OID " + collabOid + " is not a collaborator on this board.");
         }
 
-        existingCollaborator.setAccessRight(boardAccessRightRequestDTO.getAccess_right());
+        existingCollaborator.setAccessRight(boardAccessRightRequestDTO.getAccessRight());
 
         Collaborator updatedCollaborator = collaboratorRepository.save(existingCollaborator);
 
-        return convertToCollaboratorDTO(updatedCollaborator);
+        return convertToBoardAccessRightResponseDTO(updatedCollaborator);
     }
 
     @Transactional
@@ -190,6 +202,21 @@ public class CollaboratorService {
         dto.setAccessRight(collaborator.getAccessRight());
         dto.setAddedOn(collaborator.getAddedOn());
         return dto;
+    }
+
+    private CollabAddEditResponseDTO convertToCollabAddEditResponseDTO(Board board, Collaborator collaborator) {
+        return new CollabAddEditResponseDTO(
+                board.getId(),
+                collaborator.getName(),
+                collaborator.getEmail(),
+                collaborator.getAccessRight()
+        );
+    }
+
+    private BoardAccessRightResponseDTO convertToBoardAccessRightResponseDTO(Collaborator collaborator) {
+        BoardAccessRightResponseDTO responseDTO = new BoardAccessRightResponseDTO();
+        responseDTO.setAccessRight(collaborator.getAccessRight());
+        return responseDTO;
     }
 
 }

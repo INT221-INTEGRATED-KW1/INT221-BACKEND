@@ -80,11 +80,9 @@ public class BoardController {
 
         // If the board is private, validate token and access
         Claims claims = Utils.getClaims(token, jwtTokenUtil);
-        validateOwnership(claims, id); // Validate if the user owns or has access to the board
 
         return ResponseEntity.ok(boardService.getCollaborators(id, claims));
     }
-
 
     @GetMapping("/{id}/collabs/{collabOid}")
     public ResponseEntity<CollaboratorResponseDTO> getCollaboratorById(
@@ -105,23 +103,22 @@ public class BoardController {
     }
 
     @PostMapping("/{id}/collabs")
-    public ResponseEntity<CollaboratorResponseDTO> addNewCollaborator(
+    public ResponseEntity<CollabAddEditResponseDTO> addNewCollaborator(
             @PathVariable String id,
             @RequestHeader("Authorization") String token,
             @RequestBody(required = false) @Valid CollaboratorRequestDTO collaboratorRequestDTO) {
-        CollaboratorResponseDTO responseDTO = collaboratorService.addNewCollaborator(id, token, collaboratorRequestDTO);
+        CollabAddEditResponseDTO responseDTO = collaboratorService.addNewCollaborator(id, token, collaboratorRequestDTO);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDTO);
     }
 
-
     @PatchMapping("/{id}/collabs/{collabOid}")
-    public ResponseEntity<CollaboratorResponseDTO> updateBoardAccessRight(
+    public ResponseEntity<BoardAccessRightResponseDTO> updateBoardAccessRight(
             @RequestHeader(value = "Authorization") String token,
             @PathVariable String id,
             @PathVariable String collabOid,
             @RequestBody(required = false) @Valid BoardAccessRightRequestDTO boardAccessRightRequestDTO) {
-        CollaboratorResponseDTO responseDTO = collaboratorService.updateBoardAccessRight(id, collabOid,token, boardAccessRightRequestDTO);
+        BoardAccessRightResponseDTO responseDTO = collaboratorService.updateBoardAccessRight(id, collabOid,token, boardAccessRightRequestDTO);
 
         return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
     }
@@ -160,10 +157,6 @@ public class BoardController {
     public ResponseEntity<BoardVisibilityResponseDTO> updateBoardVisibility(@PathVariable String id, @RequestBody(required = false) @Valid BoardVisibilityRequestDTO boardDTO,
                                                                             @RequestHeader(value = "Authorization") String token) {
         Board board = validateBoardAndOwnership(id, token);
-
-        if (boardDTO == null) {
-            throw new BadRequestException("Missing required fields.");
-        }
 
         return ResponseEntity.status(HttpStatus.OK).body(boardService.updateBoardVisibility(id, boardDTO));
     }

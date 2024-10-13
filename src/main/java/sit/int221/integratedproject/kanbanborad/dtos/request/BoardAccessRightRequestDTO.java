@@ -4,5 +4,5 @@ import lombok.Data;
 
 @Data
 public class BoardAccessRightRequestDTO {
-    private String access_right;
+    private String accessRight;
 }
