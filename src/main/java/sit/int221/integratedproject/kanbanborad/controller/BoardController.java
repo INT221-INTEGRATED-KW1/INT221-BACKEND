@@ -103,22 +103,22 @@ public class BoardController {
     }
 
     @PostMapping("/{id}/collabs")
-    public ResponseEntity<CollabAddEditResponseDTO> addNewCollaborator(
+    public ResponseEntity<CollaboratorResponseDTO> addNewCollaborator(
             @PathVariable String id,
             @RequestHeader("Authorization") String token,
             @RequestBody(required = false) @Valid CollaboratorRequestDTO collaboratorRequestDTO) {
-        CollabAddEditResponseDTO responseDTO = collaboratorService.addNewCollaborator(id, token, collaboratorRequestDTO);
+        CollaboratorResponseDTO responseDTO = collaboratorService.addNewCollaborator(id, token, collaboratorRequestDTO);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDTO);
     }
 
     @PatchMapping("/{id}/collabs/{collabOid}")
-    public ResponseEntity<BoardAccessRightResponseDTO> updateBoardAccessRight(
+    public ResponseEntity<CollaboratorResponseDTO> updateBoardAccessRight(
             @RequestHeader(value = "Authorization") String token,
             @PathVariable String id,
             @PathVariable String collabOid,
             @RequestBody(required = false) @Valid BoardAccessRightRequestDTO boardAccessRightRequestDTO) {
-        BoardAccessRightResponseDTO responseDTO = collaboratorService.updateBoardAccessRight(id, collabOid,token, boardAccessRightRequestDTO);
+        CollaboratorResponseDTO responseDTO = collaboratorService.updateBoardAccessRight(id, collabOid,token, boardAccessRightRequestDTO);
 
         return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
     }

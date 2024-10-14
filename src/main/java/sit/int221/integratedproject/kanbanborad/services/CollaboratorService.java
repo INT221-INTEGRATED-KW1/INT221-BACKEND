@@ -46,7 +46,7 @@ public class CollaboratorService {
     }
 
     @Transactional
-    public CollabAddEditResponseDTO addNewCollaborator(String id, String token, CollaboratorRequestDTO collaboratorRequestDTO) {
+    public CollaboratorResponseDTO addNewCollaborator(String id, String token, CollaboratorRequestDTO collaboratorRequestDTO) {
         // Validate the token and fetch claims (do this first)
         Claims claims = Utils.getClaims(token, jwtTokenUtil);
 
@@ -112,10 +112,11 @@ public class CollaboratorService {
         Collaborator savedCollaborator = collaboratorRepository.save(collaborator);
         entityManager.refresh(savedCollaborator);
 
-        return convertToCollabAddEditResponseDTO(board, savedCollaborator);
+        return convertToCollaboratorDTO(savedCollaborator);
     }
+
     @Transactional
-    public BoardAccessRightResponseDTO updateBoardAccessRight(String id, String collabOid, String token, BoardAccessRightRequestDTO boardAccessRightRequestDTO) {
+    public CollaboratorResponseDTO  updateBoardAccessRight(String id, String collabOid, String token, BoardAccessRightRequestDTO boardAccessRightRequestDTO) {
         Claims claims = Utils.getClaims(token, jwtTokenUtil);
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Board ID " + id + " not found."));
@@ -149,7 +150,7 @@ public class CollaboratorService {
 
         Collaborator updatedCollaborator = collaboratorRepository.save(existingCollaborator);
 
-        return convertToBoardAccessRightResponseDTO(updatedCollaborator);
+        return convertToCollaboratorDTO(updatedCollaborator);
     }
 
     @Transactional
