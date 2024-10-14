@@ -128,12 +128,12 @@ public class CollaboratorService {
             throw new BadRequestException("Request body is required.");
         }
 
-        if (boardAccessRightRequestDTO.getAccessRight() == null || boardAccessRightRequestDTO.getAccessRight().isBlank()) {
+        if (boardAccessRightRequestDTO.getAccess_right() == null || boardAccessRightRequestDTO.getAccess_right().isBlank()) {
             throw new BadRequestException("Access right is required.");
         }
 
         // Validate access_right field (400 error)
-        if (!List.of("READ", "WRITE").contains(boardAccessRightRequestDTO.getAccessRight().toUpperCase())) {
+        if (!List.of("READ", "WRITE").contains(boardAccessRightRequestDTO.getAccess_right().toUpperCase())) {
             throw new BadRequestException("Invalid access right. Must be 'READ' or 'WRITE'.");
         }
 
@@ -146,7 +146,7 @@ public class CollaboratorService {
             throw new ItemNotFoundException("Collaborator with OID " + collabOid + " is not a collaborator on this board.");
         }
 
-        existingCollaborator.setAccessRight(boardAccessRightRequestDTO.getAccessRight());
+        existingCollaborator.setAccessRight(boardAccessRightRequestDTO.getAccess_right());
 
         Collaborator updatedCollaborator = collaboratorRepository.save(existingCollaborator);
 
