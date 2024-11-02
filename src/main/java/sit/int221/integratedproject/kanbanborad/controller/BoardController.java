@@ -1,34 +1,24 @@
 package sit.int221.integratedproject.kanbanborad.controller;
 
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.security.SignatureException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 import sit.int221.integratedproject.kanbanborad.dtos.request.*;
 import sit.int221.integratedproject.kanbanborad.dtos.response.*;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
-import sit.int221.integratedproject.kanbanborad.enumeration.JwtErrorType;
-import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.BoardNameNobodyException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
 import sit.int221.integratedproject.kanbanborad.services.BoardService;
 import sit.int221.integratedproject.kanbanborad.services.CollaboratorService;
+import sit.int221.integratedproject.kanbanborad.services.InvitationService;
 import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
 import java.util.List;
-
-import static org.springframework.data.jpa.domain.AbstractPersistable_.id;
 
 @RestController
 @RequestMapping("/v3/boards")
@@ -38,12 +28,55 @@ public class BoardController {
     private final JwtTokenUtil jwtTokenUtil;
     private final BoardRepository boardRepository;
     private final CollaboratorService collaboratorService;
+    private final InvitationService invitationService;
 
-    public BoardController(BoardService boardService, JwtTokenUtil jwtTokenUtil, BoardRepository boardRepository, CollaboratorService collaboratorService) {
+    public BoardController(BoardService boardService, JwtTokenUtil jwtTokenUtil, BoardRepository boardRepository, CollaboratorService collaboratorService, InvitationService invitationService) {
         this.boardService = boardService;
         this.jwtTokenUtil = jwtTokenUtil;
         this.boardRepository = boardRepository;
         this.collaboratorService = collaboratorService;
+        this.invitationService = invitationService;
+    }
+
+    // Endpoint to send an invitation to a collaborator
+    @PostMapping("/{id}/collab/invitations")
+    public ResponseEntity<String> sendInvitation(
+            @RequestHeader("Authorization") String token,
+            @PathVariable String id,
+            @RequestBody @Valid InvitationRequestDTO invitationRequestDTO) {
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+        String message = invitationService.sendInvitation(id, claims, invitationRequestDTO);
+        return ResponseEntity.status(HttpStatus.CREATED).body(message);
+    }
+
+    // Endpoint to accept an invitation
+    @PostMapping("/{id}/collab/invitations/accept")
+    public ResponseEntity<InvitationAcceptanceResponseDTO> acceptInvitation(
+            @RequestHeader("Authorization") String token,
+            @PathVariable String id) {
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+        InvitationAcceptanceResponseDTO responseDTO = invitationService.acceptInvitation(id, claims);
+        return ResponseEntity.ok(responseDTO);
+    }
+
+    // Endpoint to decline an invitation
+    @PostMapping("/{id}/collab/invitations/decline")
+    public ResponseEntity<String> declineInvitation(
+            @RequestHeader("Authorization") String token,
+            @PathVariable String id) {
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+        invitationService.declineInvitation(id, claims);
+        return ResponseEntity.ok("Invitation declined.");
+    }
+
+    // Endpoint to view pending invitations
+    @GetMapping("/{id}/collab/invitations")
+    public ResponseEntity<List<InvitationResponseDTO>> getPendingInvitations(
+            @RequestHeader("Authorization") String token,
+            @PathVariable String id) {
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+        List<InvitationResponseDTO> invitations = invitationService.getPendingInvitations(id, claims);
+        return ResponseEntity.ok(invitations);
     }
 
     @GetMapping("")
@@ -118,7 +151,7 @@ public class BoardController {
             @PathVariable String id,
             @PathVariable String collabOid,
             @RequestBody(required = false) @Valid BoardAccessRightRequestDTO boardAccessRightRequestDTO) {
-        BoardAccessRightResponseDTO responseDTO = collaboratorService.updateBoardAccessRight(id, collabOid,token, boardAccessRightRequestDTO);
+        BoardAccessRightResponseDTO responseDTO = collaboratorService.updateBoardAccessRight(id, collabOid, token, boardAccessRightRequestDTO);
 
         return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
     }
@@ -128,11 +161,10 @@ public class BoardController {
             @RequestHeader(value = "Authorization") String token,
             @PathVariable String id,
             @PathVariable String collabOid) {
-        CollaboratorResponseDTO responseDTO = collaboratorService.deleteBoardCollaborator(id, collabOid ,token);
+        CollaboratorResponseDTO responseDTO = collaboratorService.deleteBoardCollaborator(id, collabOid, token);
 
         return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
     }
-
 
     @PostMapping("")
     public ResponseEntity<BoardResponseDTO> createBoard(@RequestHeader("Authorization") String token,
@@ -189,6 +221,5 @@ public class BoardController {
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
         return board.getOid().equals(oid);
     }
-
 
 }

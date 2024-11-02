@@ -98,12 +98,12 @@ public class BoardService {
         // แปลง personalBoards และ collabBoards เป็น BoardResponseDTO พร้อมดึงข้อมูล owner
         List<BoardResponseDTO> personalBoardDTOs = personalBoards.stream()
                 .map(board -> {
-                            return new BoardResponseDTO(
-                                    board.getId(),
-                                    board.getName(),
-                                    convertToOwnerDTO(user), // ดึงข้อมูล owner จาก User
-                                    board.getVisibility());
-                        }).collect(Collectors.toList());
+                    return new BoardResponseDTO(
+                            board.getId(),
+                            board.getName(),
+                            convertToOwnerDTO(user), // ดึงข้อมูล owner จาก User
+                            board.getVisibility());
+                }).collect(Collectors.toList());
 
         List<CollabBoardResponseDTO> collabBoardDTOs = collabBoards.stream()
                 .map(board -> {
@@ -237,7 +237,7 @@ public class BoardService {
         }
         Board existingBoard = boardRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
-            existingBoard.setVisibility(boardDTO.getVisibility());
+        existingBoard.setVisibility(boardDTO.getVisibility());
         Board updatedBoard = boardRepository.save(existingBoard);
 
         BoardVisibilityResponseDTO responseDTO = new BoardVisibilityResponseDTO();

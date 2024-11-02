@@ -5,29 +5,33 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import sit.int221.integratedproject.kanbanborad.enumeration.CollabStatus;
+import sit.int221.integratedproject.kanbanborad.enumeration.InvitationStatus;
 
 import java.sql.Timestamp;
 
 @Entity
-@Table(name = "collaborators")
+@Table(name = "invitations")
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
-public class Collaborator {
+public class Invitation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "invitation_id")
     private Integer id;
     @ManyToOne
     @JoinColumn(name = "board_id", nullable = false)
     private Board board;
-    private String oid;
-    private String name;
-    private String email;
+    @Column(name = "inviter_oid", nullable = false)
+    private String inviterOid;
+    @Column(name = "invitee_oid", nullable = false)
+    private String inviteeOid;
     @Column(name = "access_right")
     private String accessRight;
-    private CollabStatus status;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private InvitationStatus status = InvitationStatus.PENDING;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
-    @Column(insertable = false, updatable = false)
-    private Timestamp addedOn;
+    @Column(name = "createdOn", insertable = false, updatable = false)
+    private Timestamp createdOn;
 }
