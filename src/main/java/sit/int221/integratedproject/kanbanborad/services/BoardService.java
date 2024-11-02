@@ -228,9 +228,6 @@ public class BoardService {
 
     @Transactional
     public BoardVisibilityResponseDTO updateBoardVisibility(String id, BoardVisibilityRequestDTO boardDTO) {
-        if (boardDTO == null) {
-            throw new BadRequestException("Request body cannot be null.");
-        }
         if (!boardDTO.getVisibility().equalsIgnoreCase("PUBLIC")
                 && !boardDTO.getVisibility().equalsIgnoreCase("PRIVATE")) {
             throw new BadRequestException("Visibility must be either 'public' or 'private'.");

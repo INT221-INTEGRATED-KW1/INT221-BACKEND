@@ -66,12 +66,12 @@ public class CollaboratorService {
         if (collaboratorRequestDTO.getEmail() == null || collaboratorRequestDTO.getEmail().isBlank()) {
             throw new BadRequestException("Email is required.");
         }
-        if (collaboratorRequestDTO.getAccessRight() == null || collaboratorRequestDTO.getAccessRight().isBlank()) {
+        if (collaboratorRequestDTO.getAccess_right() == null || collaboratorRequestDTO.getAccess_right().isBlank()) {
             throw new BadRequestException("Access right is required.");
         }
 
         // Validate access_right field value (400 error)
-        if (!List.of("READ", "WRITE").contains(collaboratorRequestDTO.getAccessRight().toUpperCase())) {
+        if (!List.of("READ", "WRITE").contains(collaboratorRequestDTO.getAccess_right().toUpperCase())) {
             throw new BadRequestException("Invalid access right. Must be 'READ' or 'WRITE'.");
         }
 
@@ -107,14 +107,13 @@ public class CollaboratorService {
         collaborator.setOid(newCollaborator.getOid());
         collaborator.setName(newCollaborator.getName());
         collaborator.setEmail(newCollaborator.getEmail());
-        collaborator.setAccessRight(collaboratorRequestDTO.getAccessRight());
+        collaborator.setAccessRight(collaboratorRequestDTO.getAccess_right());
 
         Collaborator savedCollaborator = collaboratorRepository.save(collaborator);
         entityManager.refresh(savedCollaborator);
 
         return convertToCollabAddEditResponseDTO(board, savedCollaborator);
     }
-
     @Transactional
     public BoardAccessRightResponseDTO updateBoardAccessRight(String id, String collabOid, String token, BoardAccessRightRequestDTO boardAccessRightRequestDTO) {
         Claims claims = Utils.getClaims(token, jwtTokenUtil);
@@ -158,56 +157,29 @@ public class CollaboratorService {
         // Validate the token and fetch claims
         Claims claims = Utils.getClaims(token, jwtTokenUtil);
 
-        // Extract the token owner's OID
-        String oid = claims.get("oid", String.class);
-
         // Check if the board exists (404 error)
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Board ID " + id + " not found."));
 
-        // Check if the token owner is the board owner
+        // Check if the token owner is either the board owner or a collaborator (403 error)
+        String oid = claims.get("oid", String.class);
         boolean isBoardOwner = oid.equals(board.getOid());
-
-        // Retrieve the token owner's collaborator role, if any
         Collaborator tokenCollaborator = collaboratorRepository.findByBoardAndOid(board, oid);
-        String tokenCollaboratorRole = (tokenCollaborator != null) ? tokenCollaborator.getAccessRight() : null;
 
-        // Determine if the action is "self-leave" or "remove another collaborator"
-        boolean isSelfLeave = oid.equals(collabOid);
-
-        if (isSelfLeave) {
-            // Prevent the board owner from leaving (403 Forbidden)
-            if (isBoardOwner) {
-                throw new ItemNotFoundException("Collaborator with OID " + collabOid + " is not a collaborator on this board.");
-            }
-
-            // Handle self-leave case: Collaborator attempts to leave the board
-            Collaborator selfCollaborator = collaboratorRepository.findByBoardAndOid(board, collabOid);
-            if (selfCollaborator == null) {
-                throw new ForbiddenException("Board owner cannot leave the board.");
-            }
-            collaboratorRepository.delete(selfCollaborator);
-            return convertToCollaboratorDTO(selfCollaborator);
-        } else {
-            // Handle remove case: Owner or WRITE collaborator tries to remove another collaborator
-
-            // Check for invalid permissions (403 Forbidden)
-            if (!isBoardOwner && !"WRITE".equalsIgnoreCase(tokenCollaboratorRole)) {
-                throw new ForbiddenException("You do not have permission to delete this collaborator.");
-            }
-
-            // If a WRITE collaborator tries to remove another, return 403 Forbidden
-            if ("WRITE".equalsIgnoreCase(tokenCollaboratorRole) && !oid.equals(collabOid)) {
-                throw new ForbiddenException("WRITE collaborators cannot remove other collaborators.");
-            }
-
-            // Check if the target collaborator exists (404 error for invalid remove attempt)
-            Collaborator existingCollaborator = collaboratorRepository.findByBoardAndOid(board, collabOid);
-
-            collaboratorRepository.delete(existingCollaborator);
-            return convertToCollaboratorDTO(existingCollaborator);
+        if (!isBoardOwner && tokenCollaborator == null) {
+            throw new ForbiddenException("You do not have permission to delete collaborators on this board.");
         }
-    }
+
+        // Check if the collaborator exists (404 error)
+        Collaborator existingCollaborator = collaboratorRepository.findByBoardAndOid(board, collabOid);
+        if (existingCollaborator == null) {
+            throw new ItemNotFoundException("Collaborator with OID " + collabOid + " is not a collaborator on this board.");
+        }
+
+        // Remove collaborator from the board
+        collaboratorRepository.delete(existingCollaborator);
+        return convertToCollaboratorDTO(existingCollaborator);
+    } 
 
     private void validateOwnership(Claims claims, String boardId) {
         String oid = (String) claims.get("oid");
