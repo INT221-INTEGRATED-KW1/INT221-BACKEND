@@ -14,7 +14,6 @@ import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
 import sit.int221.integratedproject.kanbanborad.services.BoardService;
 import sit.int221.integratedproject.kanbanborad.services.CollaboratorService;
-import sit.int221.integratedproject.kanbanborad.services.InvitationService;
 import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
@@ -28,55 +27,12 @@ public class BoardController {
     private final JwtTokenUtil jwtTokenUtil;
     private final BoardRepository boardRepository;
     private final CollaboratorService collaboratorService;
-    private final InvitationService invitationService;
 
-    public BoardController(BoardService boardService, JwtTokenUtil jwtTokenUtil, BoardRepository boardRepository, CollaboratorService collaboratorService, InvitationService invitationService) {
+    public BoardController(BoardService boardService, JwtTokenUtil jwtTokenUtil, BoardRepository boardRepository, CollaboratorService collaboratorService) {
         this.boardService = boardService;
         this.jwtTokenUtil = jwtTokenUtil;
         this.boardRepository = boardRepository;
         this.collaboratorService = collaboratorService;
-        this.invitationService = invitationService;
-    }
-
-    // Endpoint to send an invitation to a collaborator
-    @PostMapping("/{id}/collab/invitations")
-    public ResponseEntity<String> sendInvitation(
-            @RequestHeader("Authorization") String token,
-            @PathVariable String id,
-            @RequestBody @Valid InvitationRequestDTO invitationRequestDTO) {
-        Claims claims = Utils.getClaims(token, jwtTokenUtil);
-        String message = invitationService.sendInvitation(id, claims, invitationRequestDTO);
-        return ResponseEntity.status(HttpStatus.CREATED).body(message);
-    }
-
-    // Endpoint to accept an invitation
-    @PostMapping("/{id}/collab/invitations/accept")
-    public ResponseEntity<InvitationAcceptanceResponseDTO> acceptInvitation(
-            @RequestHeader("Authorization") String token,
-            @PathVariable String id) {
-        Claims claims = Utils.getClaims(token, jwtTokenUtil);
-        InvitationAcceptanceResponseDTO responseDTO = invitationService.acceptInvitation(id, claims);
-        return ResponseEntity.ok(responseDTO);
-    }
-
-    // Endpoint to decline an invitation
-    @PostMapping("/{id}/collab/invitations/decline")
-    public ResponseEntity<String> declineInvitation(
-            @RequestHeader("Authorization") String token,
-            @PathVariable String id) {
-        Claims claims = Utils.getClaims(token, jwtTokenUtil);
-        invitationService.declineInvitation(id, claims);
-        return ResponseEntity.ok("Invitation declined.");
-    }
-
-    // Endpoint to view pending invitations
-    @GetMapping("/{id}/collab/invitations")
-    public ResponseEntity<List<InvitationResponseDTO>> getPendingInvitations(
-            @RequestHeader("Authorization") String token,
-            @PathVariable String id) {
-        Claims claims = Utils.getClaims(token, jwtTokenUtil);
-        List<InvitationResponseDTO> invitations = invitationService.getPendingInvitations(id, claims);
-        return ResponseEntity.ok(invitations);
     }
 
     @GetMapping("")
@@ -91,27 +47,23 @@ public class BoardController {
         Board board = getBoardOrThrow(id);
 
         if (isPublicBoard(board)) {
-            // Call the overloaded method without claims for public boards
             return ResponseEntity.ok(boardService.getBoardById(id));
         }
 
-        // If the board is private, validate the token and retrieve claims
         Claims claims = Utils.getClaims(token, jwtTokenUtil);
-        return ResponseEntity.ok(boardService.getBoardById(id, claims));  // Call the overloaded method with claims
+        return ResponseEntity.ok(boardService.getBoardById(id, claims));
     }
 
     @GetMapping("/{id}/collabs")
     public ResponseEntity<List<CollaboratorResponseDTO>> getCollaborators(
             @RequestHeader(value = "Authorization", required = false) String token,
             @PathVariable String id) {
-        Board board = getBoardOrThrow(id); // Fetch board and throw if not found
+        Board board = getBoardOrThrow(id);
 
-        // If the board is public, no need for token validation
         if (isPublicBoard(board)) {
             return ResponseEntity.ok(boardService.getCollaborators(id));
         }
 
-        // If the board is private, validate token and access
         Claims claims = Utils.getClaims(token, jwtTokenUtil);
 
         return ResponseEntity.ok(boardService.getCollaborators(id, claims));
@@ -122,14 +74,12 @@ public class BoardController {
             @RequestHeader(value = "Authorization", required = false) String token,
             @PathVariable String id,
             @PathVariable String collabOid) {
-        Board board = getBoardOrThrow(id); // Fetch board and throw if not found
+        Board board = getBoardOrThrow(id);
 
-        // If the board is public, no need for token validation
         if (isPublicBoard(board)) {
             return ResponseEntity.ok(boardService.getCollaboratorById(id, collabOid));
         }
 
-        // If the board is private, validate token and access
         Claims claims = Utils.getClaims(token, jwtTokenUtil);
 
         return ResponseEntity.ok(boardService.getCollaboratorById(id, collabOid, claims));
@@ -143,6 +93,76 @@ public class BoardController {
         CollabAddEditResponseDTO responseDTO = collaboratorService.addNewCollaborator(id, token, collaboratorRequestDTO);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDTO);
+    }
+
+    @PatchMapping("/{id}/collabs/{collabOid}/status")
+    public ResponseEntity<CollabAddEditResponseDTO> updateCollaboratorStatus(
+            @PathVariable String id,
+            @PathVariable String collabOid,
+            @RequestHeader("Authorization") String token,
+            @RequestBody CollaboratorStatusUpdateDTO statusUpdateDTO) {
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+
+        CollabAddEditResponseDTO responseDTO = collaboratorService.updateCollaboratorStatus(id, collabOid, statusUpdateDTO, claims);
+
+        return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
+    }
+
+    @GetMapping("/{boardId}/collabs/invitations")
+    public ResponseEntity<List<CollaboratorResponseDTO>> getActiveInvitations(
+            @PathVariable String boardId,
+            @RequestHeader("Authorization") String token) {
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+        String userId = (String) claims.get("oid");
+
+        List<CollaboratorResponseDTO> activeInvitations = collaboratorService.getActiveInvitations(boardId, userId);
+        return ResponseEntity.ok(activeInvitations);
+    }
+
+    @GetMapping("/collabs/invitations/pending")
+    public ResponseEntity<List<CollaboratorResponseDTO>> getPendingInvitations(
+            @RequestHeader("Authorization") String token) {
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+        String userId = (String) claims.get("oid");
+
+        List<CollaboratorResponseDTO> pendingInvitations = collaboratorService.getPendingInvitationsForCollaborator(userId);
+        return ResponseEntity.ok(pendingInvitations);
+    }
+
+    @PatchMapping("/{id}/collabs/{collabOid}/accept")
+    public ResponseEntity<CollabAddEditResponseDTO> acceptInvitation(
+            @PathVariable String id,
+            @PathVariable String collabOid,
+            @RequestHeader("Authorization") String token) {
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+
+        CollabAddEditResponseDTO responseDTO = collaboratorService.acceptCollaboratorInvitation(id, collabOid, claims);
+
+        return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
+    }
+
+    @PatchMapping("/{id}/collabs/{collabOid}/decline")
+    public ResponseEntity<CollabAddEditResponseDTO> declineInvitation(
+            @PathVariable String id,
+            @PathVariable String collabOid,
+            @RequestHeader("Authorization") String token) {
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+
+        CollabAddEditResponseDTO responseDTO = collaboratorService.declineCollaboratorInvitation(id, collabOid, claims);
+
+        return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
+    }
+
+    @GetMapping("/{boardId}/collabs/invitation")
+    public ResponseEntity<CollaboratorInvitationResponseDTO> getInvitationDetails(
+            @PathVariable String boardId,
+            @RequestHeader("Authorization") String token) {
+        System.out.println("test");
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+        String userId = (String) claims.get("oid");
+
+        CollaboratorInvitationResponseDTO invitationDetails = collaboratorService.getInvitationDetails(boardId, userId);
+        return ResponseEntity.ok(invitationDetails);
     }
 
     @PatchMapping("/{id}/collabs/{collabOid}")

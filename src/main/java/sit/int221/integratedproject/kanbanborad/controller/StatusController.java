@@ -11,6 +11,7 @@ import sit.int221.integratedproject.kanbanborad.dtos.request.StatusRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.*;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Collaborator;
+import sit.int221.integratedproject.kanbanborad.enumeration.CollabStatus;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
@@ -36,12 +37,6 @@ public class StatusController {
         this.boardRepository = boardRepository;
         this.jwtTokenUtil = jwtTokenUtil;
         this.collaboratorRepository = collaboratorRepository;
-    }
-
-    private boolean isOwner(String oid, String boardId) {
-        Board board = boardRepository.findById(boardId)
-                .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
-        return board.getOid().equals(oid);
     }
 
     @GetMapping("/{id}/statuses")
@@ -80,7 +75,6 @@ public class StatusController {
             throw new BadRequestException("Missing required fields.");
         }
 
-        // Proceed to add the new status
         return ResponseEntity.status(HttpStatus.CREATED).body(statusService.createNewStatus(statusDTO, id));
     }
 
@@ -117,7 +111,6 @@ public class StatusController {
         }
         return ResponseEntity.status(HttpStatus.OK).body(statusService.deleteTaskAndTransferStatus(id, oldId, newId));
     }
-
 
     private Board validateBoardAndOwnership(String boardId, String token) {
         Board board = getBoardOrThrow(boardId);
@@ -169,8 +162,14 @@ public class StatusController {
         }
 
         String oid = (String) claims.get("oid");
+
         if (!isOwner(oid, boardId) && !isCollaborator(oid, boardId)) {
-            throw new ForbiddenException("You are not allowed to modify this board.");
+            throw new ForbiddenException("You are not allowed to access this board.");
+        }
+
+        Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
+        if (collaborator.isPresent() && collaborator.get().getStatus() == CollabStatus.PENDING) {
+            throw new ForbiddenException("You cannot access this board because your invitation is pending.");
         }
 
         return claims;
@@ -181,13 +180,11 @@ public class StatusController {
     }
 
     private boolean isCollaborator(String oid, String boardId) {
-        // เช็คจาก database ว่าผู้ใช้มีสิทธิ์เป็น collaborator หรือไม่
         Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
         return collaborator.isPresent();
     }
 
     private boolean hasWriteAccess(String oid, String boardId) {
-        // Fetch collaborator and ensure they have WRITE access
         Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
 
         if (collaborator.isPresent()) {
@@ -196,4 +193,11 @@ public class StatusController {
 
         return false;
     }
+
+    private boolean isOwner(String oid, String boardId) {
+        Board board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
+        return board.getOid().equals(oid);
+    }
+
 }

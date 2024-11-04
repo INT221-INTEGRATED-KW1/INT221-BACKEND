@@ -13,6 +13,7 @@ import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Collaborator;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Status;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Task;
+import sit.int221.integratedproject.kanbanborad.enumeration.CollabStatus;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.FieldNotFoundException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
@@ -44,12 +45,6 @@ public class TaskService {
         this.listMapper = listMapper;
         this.boardRepository = boardRepository;
         this.collaboratorRepository = collaboratorRepository;
-    }
-
-    private boolean isOwner(String oid, String boardId) {
-        Board board = boardRepository.findById(boardId)
-                .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
-        return board.getOid().equals(oid);
     }
 
     public List<TaskResponseDTO> findAllTask(String id) {
@@ -174,30 +169,36 @@ public class TaskService {
     }
 
     public Board findBoardByIdAndValidateAccess(Claims claims, String id) {
-        // Find the board by its id
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
 
-        // Check if the board is public or requires authentication
         if (!board.getVisibility().equalsIgnoreCase("PUBLIC")) {
-            // If the board is not public, validate claims (authentication required)
             if (claims == null) {
                 throw new ForbiddenException("Authentication required to access this board.");
             }
 
-            // Check ownership
             String oid = (String) claims.get("oid");
-            if (!isOwner(oid, id) && !isCollaborator(oid, id)) {
-                throw new ForbiddenException("You are not allowed to access this board.");
+
+            if (!isOwner(oid, id)) {
+                Optional<Collaborator> collaboratorOpt = collaboratorRepository.findByOidAndBoardId(oid, id);
+
+                if (collaboratorOpt.isEmpty() || collaboratorOpt.get().getStatus() == CollabStatus.PENDING) {
+                    throw new ForbiddenException("You are not allowed to access this board.");
+                }
             }
         }
         return board;
     }
 
     private boolean isCollaborator(String oid, String boardId) {
-        // เช็คจาก database ว่าผู้ใช้มีสิทธิ์เป็น collaborator หรือไม่
         Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
         return collaborator.isPresent();
+    }
+
+    private boolean isOwner(String oid, String boardId) {
+        Board board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
+        return board.getOid().equals(oid);
     }
 
 }

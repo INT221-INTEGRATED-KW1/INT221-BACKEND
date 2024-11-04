@@ -26,6 +26,8 @@ public class Collaborator {
     private String email;
     @Column(name = "access_right")
     private String accessRight;
+    @Column(name = "status", columnDefinition = "ENUM('PENDING', 'ACCEPTED')")
+    @Enumerated(EnumType.STRING)
     private CollabStatus status;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     @Column(insertable = false, updatable = false)

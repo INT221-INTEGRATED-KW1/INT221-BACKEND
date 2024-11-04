@@ -13,6 +13,7 @@ import sit.int221.integratedproject.kanbanborad.dtos.response.TaskDetailResponse
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Collaborator;
+import sit.int221.integratedproject.kanbanborad.enumeration.CollabStatus;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
@@ -60,7 +61,6 @@ public class TaskController {
         Claims claims = validateToken(token);
 
         validateOwnership(claims, id);
-        System.out.println("test1");
 
         return ResponseEntity.status(HttpStatus.OK).body(tasks);
     }
@@ -90,7 +90,6 @@ public class TaskController {
         Claims claims = validateToken(token);
 
         validateOwnership(claims, id);
-        System.out.println("test2");
 
         return ResponseEntity.status(HttpStatus.OK).body(taskService.findTaskById(claims, id, taskId));
     }
@@ -134,7 +133,6 @@ public class TaskController {
         return boardRepository.findById(boardId)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
     }
-
     private Claims validateToken(String token) {
         return Utils.getClaims(token, jwtTokenUtil);
     }
@@ -143,6 +141,11 @@ public class TaskController {
         String oid = (String) claims.get("oid");
         if (!isOwner(oid, boardId) && !isCollaborator(oid, boardId)) {
             throw new ForbiddenException("You are not allowed to access this board.");
+        }
+
+        Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
+        if (collaborator.isPresent() && collaborator.get().getStatus() == CollabStatus.PENDING) {
+            throw new ForbiddenException("You cannot access this board because your invitation is pending.");
         }
     }
 
@@ -171,8 +174,9 @@ public class TaskController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "JWT Token has expired");
         }
 
-        String oid = (String) claims.get("oid");
-        if (!isOwner(oid, boardId) && !hasWriteAccess(oid, boardId)) {
+        validateOwnership(claims, boardId);
+
+        if (!isOwner((String) claims.get("oid"), boardId) && !hasWriteAccess((String) claims.get("oid"), boardId)) {
             throw new ForbiddenException("You are not allowed to modify this board.");
         }
 
@@ -186,13 +190,11 @@ public class TaskController {
     }
 
     private boolean isCollaborator(String oid, String boardId) {
-        // เช็คจาก database ว่าผู้ใช้มีสิทธิ์เป็น collaborator หรือไม่
         Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
         return collaborator.isPresent();
     }
 
     private boolean hasWriteAccess(String oid, String boardId) {
-        // Fetch collaborator and ensure they have WRITE access
         Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
 
         if (collaborator.isPresent()) {

@@ -12,6 +12,7 @@ import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Collaborator;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Status;
+import sit.int221.integratedproject.kanbanborad.enumeration.CollabStatus;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
@@ -48,36 +49,30 @@ public class BoardService {
     }
 
     public List<CollaboratorResponseDTO> getCollaborators(String boardId) {
-        // Fetch collaborators without checking access (for public boards)
         return collaboratorRepository.findByBoardId(boardId).stream()
                 .map(this::convertToCollaboratorDTO)
                 .collect(Collectors.toList());
     }
 
     public List<CollaboratorResponseDTO> getCollaborators(String boardId, Claims claims) {
-        // Fetch board and ensure access is granted
         Board board = getBoardOrThrow(boardId);
-        validateAccess(claims, board); // This ensures that the user has access to the board
+        validateAccess(claims, board);
 
-        // Fetch collaborators and map to DTO
         return collaboratorRepository.findByBoardId(boardId).stream()
                 .map(this::convertToCollaboratorDTO)
                 .collect(Collectors.toList());
     }
 
     public CollaboratorResponseDTO getCollaboratorById(String boardId, String collabOid) {
-        // Fetch collaborator without checking access (for public boards)
         Collaborator collaborator = collaboratorRepository.findByBoardIdAndOid(boardId, collabOid)
                 .orElseThrow(() -> new ItemNotFoundException("Collaborator not found"));
         return convertToCollaboratorDTO(collaborator);
     }
 
     public CollaboratorResponseDTO getCollaboratorById(String boardId, String collabOid, Claims claims) {
-        // Fetch board and ensure access is granted
         Board board = getBoardOrThrow(boardId);
-        validateAccess(claims, board); // Validate that the user has access to the board
+        validateAccess(claims, board);
 
-        // Fetch collaborator and throw exception if not found
         Collaborator collaborator = collaboratorRepository.findByBoardIdAndOid(boardId, collabOid)
                 .orElseThrow(() -> new ItemNotFoundException("Collaborator not found"));
         return convertToCollaboratorDTO(collaborator);
@@ -89,19 +84,16 @@ public class BoardService {
         User user = userRepository.findById(oid)
                 .orElseThrow(() -> new ItemNotFoundException("User Id " + oid + " DOES NOT EXIST !!!"));
 
-        // ดึง personal boards
         List<Board> personalBoards = boardRepository.findByOid(oid);
 
-        // ดึง collab boards
         List<Board> collabBoards = boardRepository.findCollaboratorBoardsByUserOid(oid);
 
-        // แปลง personalBoards และ collabBoards เป็น BoardResponseDTO พร้อมดึงข้อมูล owner
         List<BoardResponseDTO> personalBoardDTOs = personalBoards.stream()
                 .map(board -> {
                     return new BoardResponseDTO(
                             board.getId(),
                             board.getName(),
-                            convertToOwnerDTO(user), // ดึงข้อมูล owner จาก User
+                            convertToOwnerDTO(user),
                             board.getVisibility());
                 }).collect(Collectors.toList());
 
@@ -111,13 +103,18 @@ public class BoardService {
                             .map(Collaborator::getAccessRight)
                             .orElse("No access right");
 
+                    String invitationStatus = String.valueOf(collaboratorRepository.findByOidAndBoardId(oid, board.getId())
+                            .map(Collaborator::getStatus)
+                            .orElse(CollabStatus.PENDING));
+
                     return new CollabBoardResponseDTO(
                             board.getId(),
                             board.getName(),
                             convertToOwnerDTO(userRepository.findById(board.getOid())
-                                    .orElseThrow(() -> new ItemNotFoundException("Owner not found!"))), // ดึงข้อมูล owner ของ collab board
+                                    .orElseThrow(() -> new ItemNotFoundException("Owner not found!"))),
                             board.getVisibility(),
-                            accessRight // เพิ่ม access_right ใน response
+                            accessRight,
+                            invitationStatus
                     );
                 })
                 .collect(Collectors.toList());
@@ -130,28 +127,25 @@ public class BoardService {
     }
 
     public BoardResponseDTO getBoardById(String id) {
-        // Check if the Board exists
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
 
         User user = userRepository.findById(board.getOid())
                 .orElseThrow(() -> new ItemNotFoundException("User Id " + board.getOid() + " DOES NOT EXIST !!!"));
 
-        return getBoardResponseDTO(user, board);  // Convert and return DTO for public boards
+        return getBoardResponseDTO(user, board);
     }
 
     public BoardResponseDTO getBoardById(String id, Claims claims) {
-        // Check if the Board exists
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
 
-        // Validate ownership or access using claims
         validateOwnership(claims, id);
 
         User user = userRepository.findById(board.getOid())
                 .orElseThrow(() -> new ItemNotFoundException("User Id " + board.getOid() + " DOES NOT EXIST !!!"));
 
-        return getBoardResponseDTO(user, board);  // Convert and return DTO for private boards
+        return getBoardResponseDTO(user, board);
     }
 
     public BoardResponseDTO createBoard(Claims claims, BoardRequestDTO boardRequestDTO) {
@@ -159,7 +153,6 @@ public class BoardService {
         User user = userRepository.findById(oid)
                 .orElseThrow(() -> new ItemNotFoundException("User Id " + oid + " DOES NOT EXIST !!!"));
 
-        // Create and save a new board
         Board board = new Board();
         board.setOid(oid);
         board.setName(boardRequestDTO.getName());
@@ -167,10 +160,8 @@ public class BoardService {
         board.setVisibility("PRIVATE");
         Board savedBoard = boardRepository.save(board);
 
-        // Save default statuses for the newly created board
         saveDefaultStatuses(savedBoard);
 
-        // Return the BoardResponseDTO
         return getBoardResponseDTO(user, savedBoard);
     }
 
@@ -182,7 +173,6 @@ public class BoardService {
                 new Status("Done", "Finished", "green", board)
         );
 
-        // Save all default statuses
         statusRepository.saveAll(defaultStatuses);
     }
 
@@ -228,6 +218,9 @@ public class BoardService {
 
     @Transactional
     public BoardVisibilityResponseDTO updateBoardVisibility(String id, BoardVisibilityRequestDTO boardDTO) {
+        if (boardDTO == null) {
+            throw new BadRequestException("Request body cannot be null.");
+        }
         if (!boardDTO.getVisibility().equalsIgnoreCase("PUBLIC")
                 && !boardDTO.getVisibility().equalsIgnoreCase("PRIVATE")) {
             throw new BadRequestException("Visibility must be either 'public' or 'private'.");
@@ -250,8 +243,13 @@ public class BoardService {
 
     private void validateAccess(Claims claims, Board board) {
         String oid = (String) claims.get("oid");
-        if (!isPublicBoard(board) && !isOwner(oid, board.getId()) && !isCollaborator(oid, board)) {
-            throw new ForbiddenException("You are not allowed to access this board.");
+
+        if (!isPublicBoard(board) && !isOwner(oid, board.getId())) {
+            Optional<Collaborator> collaboratorOpt = collaboratorRepository.findByOidAndBoardId(oid, board.getId());
+
+            if (collaboratorOpt.isEmpty() || collaboratorOpt.get().getStatus() == CollabStatus.PENDING) {
+                throw new ForbiddenException("You are not allowed to access this board.");
+            }
         }
     }
 
@@ -281,13 +279,25 @@ public class BoardService {
 
     private void validateOwnership(Claims claims, String boardId) {
         String oid = (String) claims.get("oid");
-        if (!isOwner(oid, boardId) && !isCollaborator(oid, boardId)) {
-            throw new ForbiddenException("You are not allowed to access this board.");
+
+        if (isOwner(oid, boardId)) {
+            return;
         }
+
+        if (isCollaborator(oid, boardId)) {
+            Collaborator collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId)
+                    .orElseThrow(() -> new ForbiddenException("You are not allowed to access this board."));
+
+            if (collaborator.getStatus() == CollabStatus.PENDING) {
+                throw new ForbiddenException("You cannot access this board because your invitation is pending.");
+            }
+            return;
+        }
+
+        throw new ForbiddenException("You are not allowed to access this board.");
     }
 
     private boolean isCollaborator(String oid, String boardId) {
-        // เช็คจาก database ว่าผู้ใช้มีสิทธิ์เป็น collaborator หรือไม่
         Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
         return collaborator.isPresent();
     }
