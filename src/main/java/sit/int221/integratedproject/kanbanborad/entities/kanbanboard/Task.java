@@ -1,6 +1,7 @@
 package sit.int221.integratedproject.kanbanborad.entities.kanbanboard;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -8,6 +9,8 @@ import jakarta.validation.constraints.Size;
 import lombok.*;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "tasks")
@@ -40,4 +43,9 @@ public class Task {
     @ManyToOne
     @JoinColumn(name = "board_id")
     private Board board;
+    @Column(name = "attachment_count")
+    private Integer attachmentCount;
+    @JsonIgnore
+    @OneToMany(mappedBy = "task")
+    private List<Attachment> attachments = new ArrayList<>();
 }

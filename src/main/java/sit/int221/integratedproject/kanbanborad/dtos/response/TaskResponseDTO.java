@@ -9,4 +9,5 @@ public class TaskResponseDTO {
     private String title;
     private String assignees;
     private Status status;
+    private Integer attachmentCount;
 }

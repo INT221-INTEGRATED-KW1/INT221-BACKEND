@@ -10,4 +10,5 @@ public class TaskAddEditResponseDTO {
     private String description;
     private String assignees;
     private Status status;
+    private Integer attachmentCount;
 }

@@ -4,10 +4,13 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import sit.int221.integratedproject.kanbanborad.dtos.request.TaskRequestDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.request.TaskUpdateRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskAddEditResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskDetailResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
@@ -19,6 +22,7 @@ import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.CollaboratorRepository;
+import sit.int221.integratedproject.kanbanborad.services.FileService;
 import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
 import sit.int221.integratedproject.kanbanborad.services.StatusService;
 import sit.int221.integratedproject.kanbanborad.services.TaskService;
@@ -36,13 +40,15 @@ public class TaskController {
     private final StatusService statusService;
     private final JwtTokenUtil jwtTokenUtil;
     private final CollaboratorRepository collaboratorRepository;
+    private final FileService fileService;
 
-    public TaskController(TaskService taskService, BoardRepository boardRepository, StatusService statusService, JwtTokenUtil jwtTokenUtil, CollaboratorRepository collaboratorRepository) {
+    public TaskController(TaskService taskService, BoardRepository boardRepository, StatusService statusService, JwtTokenUtil jwtTokenUtil, CollaboratorRepository collaboratorRepository, FileService fileService) {
         this.taskService = taskService;
         this.boardRepository = boardRepository;
         this.statusService = statusService;
         this.jwtTokenUtil = jwtTokenUtil;
         this.collaboratorRepository = collaboratorRepository;
+        this.fileService = fileService;
     }
 
     @GetMapping("/{id}/tasks")
@@ -108,17 +114,19 @@ public class TaskController {
     }
 
     @PutMapping("/{id}/tasks/{taskId}")
-    public ResponseEntity<TaskAddEditResponseDTO> updateTask(@PathVariable String id,
-                                                             @RequestBody(required = false) @Valid TaskRequestDTO taskDTO,
-                                                             @PathVariable Integer taskId,
-                                                             @RequestHeader(value = "Authorization") String token) {
+    public ResponseEntity<TaskAddEditResponseDTO> updateTask(
+            @PathVariable String id,
+            @ModelAttribute @Valid TaskUpdateRequestDTO taskDTO,
+            @PathVariable Integer taskId,
+            @RequestHeader(value = "Authorization") String token,
+            @RequestParam("file") List<MultipartFile> files) {
         Board board = validateBoardAndOwnership(id, token);
 
         if (taskDTO == null) {
             throw new BadRequestException("Missing required fields.");
         }
 
-        return ResponseEntity.status(HttpStatus.OK).body(taskService.updateTask(id, taskDTO, taskId));
+        return ResponseEntity.status(HttpStatus.OK).body(taskService.updateTask(id, taskDTO, taskId, files));
     }
 
     @DeleteMapping("/{id}/tasks/{taskId}")
@@ -127,6 +135,11 @@ public class TaskController {
         Board board = validateBoardAndOwnership(id, token);
 
         return ResponseEntity.status(HttpStatus.OK).body(taskService.deleteTask(id, taskId));
+    }
+
+    @GetMapping("/test")
+    public ResponseEntity<Object> testPropertiesMapping() {
+        return ResponseEntity.ok(fileService.getFileStorageLocation() + " has been created !!!");
     }
 
     private Board getBoardOrThrow(String boardId) {

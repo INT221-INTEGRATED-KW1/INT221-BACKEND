@@ -4,9 +4,12 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Attachment;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Status;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -17,8 +20,10 @@ public class TaskDetailResponseDTO {
     private String description;
     private String assignees;
     private Status status;
+    private Integer attachmentCount;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     private Timestamp createdOn;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     private Timestamp updatedOn;
+    private List<AttachmentResponseDTO> attachments = new ArrayList<>();
 }
