@@ -17,4 +17,5 @@ public class CollaboratorResponseDTO {
     private String accessRight;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     private Timestamp addedOn;
+    private String invitationStatus;
 }

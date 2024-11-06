@@ -290,7 +290,6 @@ public class CollaboratorService {
         );
     }
 
-
     private void sendEmailToCollaborator(User newCollaborator, String inviterName, String accessRight, Board board) {
         String subject = String.format("%s has invited you to collaborate with %s access right on %s", inviterName, accessRight, board.getName());
         String body = String.format("You have been invited to collaborate on the board '%s'.\n\n" +

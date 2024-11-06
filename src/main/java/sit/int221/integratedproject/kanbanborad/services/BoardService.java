@@ -274,6 +274,7 @@ public class BoardService {
         dto.setEmail(collaborator.getEmail());
         dto.setAccessRight(collaborator.getAccessRight());
         dto.setAddedOn(collaborator.getAddedOn());
+        dto.setInvitationStatus(collaborator.getStatus().name());
         return dto;
     }
 
