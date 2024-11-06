@@ -115,6 +115,7 @@ public class CollaboratorService {
 
         return convertToCollabAddEditResponseDTO(board, savedCollaborator);
     }
+
     @Transactional
     public BoardAccessRightResponseDTO updateBoardAccessRight(String id, String collabOid, String token, BoardAccessRightRequestDTO boardAccessRightRequestDTO) {
         Claims claims = Utils.getClaims(token, jwtTokenUtil);
@@ -149,7 +150,6 @@ public class CollaboratorService {
 
         return convertToBoardAccessRightResponseDTO(updatedCollaborator);
     }
-
 
     @Transactional
     public CollaboratorResponseDTO deleteBoardCollaborator(String id, String collabOid, String token) {
@@ -331,7 +331,8 @@ public class CollaboratorService {
                 board.getId(),
                 collaborator.getName(),
                 collaborator.getEmail(),
-                collaborator.getAccessRight()
+                collaborator.getAccessRight(),
+                collaborator.getStatus().name()
         );
     }
 
@@ -340,7 +341,8 @@ public class CollaboratorService {
                 boardId,
                 collaborator.getName(),
                 collaborator.getEmail(),
-                collaborator.getAccessRight()
+                collaborator.getAccessRight(),
+                collaborator.getStatus().name()
         );
     }
 

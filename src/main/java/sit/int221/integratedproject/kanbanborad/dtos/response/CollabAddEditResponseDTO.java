@@ -12,4 +12,5 @@ public class CollabAddEditResponseDTO {
     private String collaboratorName;
     private String collaboratorEmail;
     private String accessRight;
+    private String invitationStatus;
 }
