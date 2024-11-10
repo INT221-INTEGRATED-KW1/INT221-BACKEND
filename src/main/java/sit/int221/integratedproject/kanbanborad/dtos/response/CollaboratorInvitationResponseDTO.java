@@ -5,12 +5,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
-public class CollabAddEditResponseDTO {
-    private String boardID;
-    private String collaboratorName;
-    private String collaboratorEmail;
+@NoArgsConstructor
+public class CollaboratorInvitationResponseDTO {
+    private String inviterName;
     private String accessRight;
-    private String invitationStatus;
+    private String boardName;
 }

@@ -3,21 +3,28 @@ package sit.int221.integratedproject.kanbanborad.controller;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.validation.Valid;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import sit.int221.integratedproject.kanbanborad.dtos.request.TaskRequestDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.request.TaskUpdateRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskAddEditResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskDetailResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Collaborator;
+import sit.int221.integratedproject.kanbanborad.enumeration.CollabStatus;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.CollaboratorRepository;
+import sit.int221.integratedproject.kanbanborad.services.FileService;
 import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
 import sit.int221.integratedproject.kanbanborad.services.StatusService;
 import sit.int221.integratedproject.kanbanborad.services.TaskService;
@@ -25,6 +32,8 @@ import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
 import java.util.List;
 import java.util.Optional;
+
+import static org.springframework.web.servlet.function.RequestPredicates.contentType;
 
 @RestController
 @RequestMapping("/v3/boards")
@@ -36,13 +45,15 @@ public class TaskController {
     private final StatusService statusService;
     private final JwtTokenUtil jwtTokenUtil;
     private final CollaboratorRepository collaboratorRepository;
+    private final FileService fileService;
 
-    public TaskController(TaskService taskService, BoardRepository boardRepository, StatusService statusService, JwtTokenUtil jwtTokenUtil, CollaboratorRepository collaboratorRepository) {
+    public TaskController(TaskService taskService, BoardRepository boardRepository, StatusService statusService, JwtTokenUtil jwtTokenUtil, CollaboratorRepository collaboratorRepository, FileService fileService) {
         this.taskService = taskService;
         this.boardRepository = boardRepository;
         this.statusService = statusService;
         this.jwtTokenUtil = jwtTokenUtil;
         this.collaboratorRepository = collaboratorRepository;
+        this.fileService = fileService;
     }
 
     @GetMapping("/{id}/tasks")
@@ -61,7 +72,6 @@ public class TaskController {
         Claims claims = validateToken(token);
 
         validateOwnership(claims, id);
-        System.out.println("test1");
 
         return ResponseEntity.status(HttpStatus.OK).body(tasks);
     }
@@ -91,7 +101,6 @@ public class TaskController {
         Claims claims = validateToken(token);
 
         validateOwnership(claims, id);
-        System.out.println("test2");
 
         return ResponseEntity.status(HttpStatus.OK).body(taskService.findTaskById(claims, id, taskId));
     }
@@ -110,17 +119,19 @@ public class TaskController {
     }
 
     @PutMapping("/{id}/tasks/{taskId}")
-    public ResponseEntity<TaskAddEditResponseDTO> updateTask(@PathVariable String id,
-                                                             @RequestBody(required = false) @Valid TaskRequestDTO taskDTO,
-                                                             @PathVariable Integer taskId,
-                                                             @RequestHeader(value = "Authorization") String token) {
+    public ResponseEntity<TaskAddEditResponseDTO> updateTask(
+            @PathVariable String id,
+            @ModelAttribute @Valid TaskUpdateRequestDTO taskDTO,
+            @PathVariable Integer taskId,
+            @RequestHeader(value = "Authorization") String token,
+            @RequestParam("files") List<MultipartFile> files) {
         Board board = validateBoardAndOwnership(id, token);
 
         if (taskDTO == null) {
             throw new BadRequestException("Missing required fields.");
         }
 
-        return ResponseEntity.status(HttpStatus.OK).body(taskService.updateTask(id, taskDTO, taskId));
+        return ResponseEntity.status(HttpStatus.OK).body(taskService.updateTask(id, taskDTO, taskId, files));
     }
 
     @DeleteMapping("/{id}/tasks/{taskId}")
@@ -129,6 +140,43 @@ public class TaskController {
         Board board = validateBoardAndOwnership(id, token);
 
         return ResponseEntity.status(HttpStatus.OK).body(taskService.deleteTask(id, taskId));
+    }
+
+    @GetMapping("/{id}/tasks/{taskId}/download")
+    public ResponseEntity<Resource> downloadFile(@PathVariable String id, @PathVariable Integer taskId,
+                                                 @RequestParam String url) {
+        String fileName = url.substring(url.lastIndexOf("/") + 1);
+
+        Resource resource = fileService.loadFileAsResource(id, taskId, fileName);
+
+        String fileExtension = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
+
+        MediaType mediaType;
+        switch (fileExtension) {
+            case "jpg":
+            case "jpeg":
+                mediaType = MediaType.IMAGE_JPEG;
+                break;
+            case "png":
+                mediaType = MediaType.IMAGE_PNG;
+                break;
+            case "pdf":
+                mediaType = MediaType.APPLICATION_PDF;
+                break;
+            default:
+                mediaType = MediaType.APPLICATION_OCTET_STREAM;
+                break;
+        }
+
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                .body(resource);
+    }
+
+    @GetMapping("/test")
+    public ResponseEntity<Object> testPropertiesMapping() {
+        return ResponseEntity.ok(fileService.getFileStorageLocation() + " has been created !!!");
     }
 
     private Board getBoardOrThrow(String boardId) {
@@ -144,6 +192,11 @@ public class TaskController {
         String oid = (String) claims.get("oid");
         if (!isOwner(oid, boardId) && !isCollaborator(oid, boardId)) {
             throw new ForbiddenException("You are not allowed to access this board.");
+        }
+
+        Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
+        if (collaborator.isPresent() && collaborator.get().getStatus() == CollabStatus.PENDING) {
+            throw new ForbiddenException("You cannot access this board because your invitation is pending.");
         }
     }
 
@@ -172,8 +225,9 @@ public class TaskController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "JWT Token has expired");
         }
 
-        String oid = (String) claims.get("oid");
-        if (!isOwner(oid, boardId) && !hasWriteAccess(oid, boardId)) {
+        validateOwnership(claims, boardId);
+
+        if (!isOwner((String) claims.get("oid"), boardId) && !hasWriteAccess((String) claims.get("oid"), boardId)) {
             throw new ForbiddenException("You are not allowed to modify this board.");
         }
 
@@ -187,13 +241,11 @@ public class TaskController {
     }
 
     private boolean isCollaborator(String oid, String boardId) {
-        // เช็คจาก database ว่าผู้ใช้มีสิทธิ์เป็น collaborator หรือไม่
         Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
         return collaborator.isPresent();
     }
 
     private boolean hasWriteAccess(String oid, String boardId) {
-        // Fetch collaborator and ensure they have WRITE access
         Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
 
         if (collaborator.isPresent()) {

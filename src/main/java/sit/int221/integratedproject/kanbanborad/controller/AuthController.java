@@ -36,7 +36,6 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<Object> login(@RequestBody @Valid JwtRequestUser jwtRequestUser) {
         try {
-            // Delegate the login logic to the AuthService
             LoginResponseDTO responseDTO = authService.login(jwtRequestUser);
             return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
         } catch (UsernameNotFoundException e) {
@@ -56,7 +55,6 @@ public class AuthController {
             jwtToken = token.substring(7);
 
             try {
-                // Validate refresh token
                 if (!jwtTokenUtil.validateRefreshToken(jwtToken)) {
                     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired refresh token");
                 }

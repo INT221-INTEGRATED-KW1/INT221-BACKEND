@@ -37,7 +37,7 @@ public class WebSecurityConfig {
                                 "/v3/boards/*/tasks/*", "/v3/boards/*/statuses/*", "/v3/boards/*/maximum-status").permitAll()  // อนุญาต GET tasks, statuses สำหรับทุกคน
                         .anyRequest().authenticated())
                 .httpBasic(withDefaults());
-        httpSecurity.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class); // เพิ่ม JWT Filter
+        httpSecurity.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return httpSecurity.build();
     }
 

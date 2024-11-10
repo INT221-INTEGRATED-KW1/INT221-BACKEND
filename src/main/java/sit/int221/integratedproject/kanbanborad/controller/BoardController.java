@@ -1,22 +1,13 @@
 package sit.int221.integratedproject.kanbanborad.controller;
 
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.security.SignatureException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 import sit.int221.integratedproject.kanbanborad.dtos.request.*;
 import sit.int221.integratedproject.kanbanborad.dtos.response.*;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
-import sit.int221.integratedproject.kanbanborad.enumeration.JwtErrorType;
-import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.BoardNameNobodyException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
@@ -27,7 +18,6 @@ import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
 import java.util.List;
-
 
 @RestController
 @RequestMapping("/v3/boards")
@@ -58,27 +48,23 @@ public class BoardController {
         Board board = getBoardOrThrow(id);
 
         if (isPublicBoard(board)) {
-            // Call the overloaded method without claims for public boards
             return ResponseEntity.ok(boardService.getBoardById(id));
         }
 
-        // If the board is private, validate the token and retrieve claims
         Claims claims = Utils.getClaims(token, jwtTokenUtil);
-        return ResponseEntity.ok(boardService.getBoardById(id, claims));  // Call the overloaded method with claims
+        return ResponseEntity.ok(boardService.getBoardById(id, claims));
     }
 
     @GetMapping("/{id}/collabs")
     public ResponseEntity<List<CollaboratorResponseDTO>> getCollaborators(
             @RequestHeader(value = "Authorization", required = false) String token,
             @PathVariable String id) {
-        Board board = getBoardOrThrow(id); // Fetch board and throw if not found
+        Board board = getBoardOrThrow(id);
 
-        // If the board is public, no need for token validation
         if (isPublicBoard(board)) {
             return ResponseEntity.ok(boardService.getCollaborators(id));
         }
 
-        // If the board is private, validate token and access
         Claims claims = Utils.getClaims(token, jwtTokenUtil);
 
         return ResponseEntity.ok(boardService.getCollaborators(id, claims));
@@ -89,36 +75,104 @@ public class BoardController {
             @RequestHeader(value = "Authorization", required = false) String token,
             @PathVariable String id,
             @PathVariable String collabOid) {
-        Board board = getBoardOrThrow(id); // Fetch board and throw if not found
+        Board board = getBoardOrThrow(id);
 
-        // If the board is public, no need for token validation
         if (isPublicBoard(board)) {
             return ResponseEntity.ok(boardService.getCollaboratorById(id, collabOid));
         }
 
-        // If the board is private, validate token and access
         Claims claims = Utils.getClaims(token, jwtTokenUtil);
 
         return ResponseEntity.ok(boardService.getCollaboratorById(id, collabOid, claims));
     }
 
     @PostMapping("/{id}/collabs")
-    public ResponseEntity<CollaboratorResponseDTO> addNewCollaborator(
+    public ResponseEntity<CollabAddEditResponseDTO> addNewCollaborator(
             @PathVariable String id,
             @RequestHeader("Authorization") String token,
             @RequestBody(required = false) @Valid CollaboratorRequestDTO collaboratorRequestDTO) {
-        CollaboratorResponseDTO responseDTO = collaboratorService.addNewCollaborator(id, token, collaboratorRequestDTO);
+        CollabAddEditResponseDTO responseDTO = collaboratorService.addNewCollaborator(id, token, collaboratorRequestDTO);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDTO);
     }
 
+    @PatchMapping("/{id}/collabs/{collabOid}/status")
+    public ResponseEntity<CollabAddEditResponseDTO> updateCollaboratorStatus(
+            @PathVariable String id,
+            @PathVariable String collabOid,
+            @RequestHeader("Authorization") String token,
+            @RequestBody CollaboratorStatusUpdateDTO statusUpdateDTO) {
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+
+        CollabAddEditResponseDTO responseDTO = collaboratorService.updateCollaboratorStatus(id, collabOid, statusUpdateDTO, claims);
+
+        return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
+    }
+
+    @GetMapping("/{boardId}/collabs/invitations")
+    public ResponseEntity<List<CollaboratorResponseDTO>> getActiveInvitations(
+            @PathVariable String boardId,
+            @RequestHeader("Authorization") String token) {
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+        String userId = (String) claims.get("oid");
+
+        List<CollaboratorResponseDTO> activeInvitations = collaboratorService.getActiveInvitations(boardId, userId);
+        return ResponseEntity.ok(activeInvitations);
+    }
+
+    @GetMapping("/collabs/invitations/pending")
+    public ResponseEntity<List<CollaboratorResponseDTO>> getPendingInvitations(
+            @RequestHeader("Authorization") String token) {
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+        String userId = (String) claims.get("oid");
+
+        List<CollaboratorResponseDTO> pendingInvitations = collaboratorService.getPendingInvitationsForCollaborator(userId);
+        return ResponseEntity.ok(pendingInvitations);
+    }
+
+    @PatchMapping("/{id}/collabs/{collabOid}/accept")
+    public ResponseEntity<CollabAddEditResponseDTO> acceptInvitation(
+            @PathVariable String id,
+            @PathVariable String collabOid,
+            @RequestHeader("Authorization") String token) {
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+
+        CollabAddEditResponseDTO responseDTO = collaboratorService.acceptCollaboratorInvitation(id, collabOid, claims);
+
+        return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
+    }
+
+    @PatchMapping("/{id}/collabs/{collabOid}/decline")
+    public ResponseEntity<CollabAddEditResponseDTO> declineInvitation(
+            @PathVariable String id,
+            @PathVariable String collabOid,
+            @RequestHeader("Authorization") String token) {
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+
+        CollabAddEditResponseDTO responseDTO = collaboratorService.declineCollaboratorInvitation(id, collabOid, claims);
+
+        return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
+    }
+
+    @GetMapping("/{boardId}/collabs/invitation")
+    public ResponseEntity<CollaboratorInvitationResponseDTO> getInvitationDetails(
+            @PathVariable String boardId,
+            @RequestHeader("Authorization") String token) {
+        System.out.println("test");
+        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+        String userId = (String) claims.get("oid");
+
+        CollaboratorInvitationResponseDTO invitationDetails = collaboratorService.getInvitationDetails(boardId, userId);
+        return ResponseEntity.ok(invitationDetails);
+    }
+
     @PatchMapping("/{id}/collabs/{collabOid}")
-    public ResponseEntity<CollaboratorResponseDTO> updateBoardAccessRight(
+    public ResponseEntity<BoardAccessRightResponseDTO> updateBoardAccessRight(
             @RequestHeader(value = "Authorization") String token,
             @PathVariable String id,
             @PathVariable String collabOid,
             @RequestBody(required = false) @Valid BoardAccessRightRequestDTO boardAccessRightRequestDTO) {
-        CollaboratorResponseDTO responseDTO = collaboratorService.updateBoardAccessRight(id, collabOid,token, boardAccessRightRequestDTO);
+        BoardAccessRightResponseDTO responseDTO = collaboratorService.updateBoardAccessRight(id, collabOid, token, boardAccessRightRequestDTO);
 
         return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
     }
@@ -128,11 +182,10 @@ public class BoardController {
             @RequestHeader(value = "Authorization") String token,
             @PathVariable String id,
             @PathVariable String collabOid) {
-        CollaboratorResponseDTO responseDTO = collaboratorService.deleteBoardCollaborator(id, collabOid ,token);
+        CollaboratorResponseDTO responseDTO = collaboratorService.deleteBoardCollaborator(id, collabOid, token);
 
         return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
     }
-
 
     @PostMapping("")
     public ResponseEntity<BoardResponseDTO> createBoard(@RequestHeader("Authorization") String token,
@@ -189,6 +242,5 @@ public class BoardController {
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
         return board.getOid().equals(oid);
     }
-
 
 }

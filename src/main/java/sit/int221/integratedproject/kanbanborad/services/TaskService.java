@@ -5,28 +5,25 @@ import jakarta.transaction.Transactional;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import sit.int221.integratedproject.kanbanborad.dtos.request.TaskRequestDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.request.TaskUpdateRequestDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.response.AttachmentResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskAddEditResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskDetailResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
-import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
-import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Collaborator;
-import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Status;
-import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Task;
+import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.*;
+import sit.int221.integratedproject.kanbanborad.enumeration.CollabStatus;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.FieldNotFoundException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
-import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
-import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.CollaboratorRepository;
-import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.StatusRepository;
-import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.TaskRepository;
+import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.*;
 import sit.int221.integratedproject.kanbanborad.utils.ListMapper;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class TaskService {
@@ -36,20 +33,18 @@ public class TaskService {
     private final ListMapper listMapper;
     private final BoardRepository boardRepository;
     private final CollaboratorRepository collaboratorRepository;
+    private final FileService fileService;
+    private final AttachmentRepository attachmentRepository;
 
-    public TaskService(TaskRepository taskRepository, StatusRepository statusRepository, ModelMapper modelMapper, ListMapper listMapper, BoardRepository boardRepository, CollaboratorRepository collaboratorRepository) {
+    public TaskService(TaskRepository taskRepository, StatusRepository statusRepository, ModelMapper modelMapper, ListMapper listMapper, BoardRepository boardRepository, CollaboratorRepository collaboratorRepository, FileService fileService, AttachmentRepository attachmentRepository) {
         this.taskRepository = taskRepository;
         this.statusRepository = statusRepository;
         this.modelMapper = modelMapper;
         this.listMapper = listMapper;
         this.boardRepository = boardRepository;
         this.collaboratorRepository = collaboratorRepository;
-    }
-
-    private boolean isOwner(String oid, String boardId) {
-        Board board = boardRepository.findById(boardId)
-                .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
-        return board.getOid().equals(oid);
+        this.fileService = fileService;
+        this.attachmentRepository = attachmentRepository;
     }
 
     public List<TaskResponseDTO> findAllTask(String id) {
@@ -86,7 +81,20 @@ public class TaskService {
             throw new ItemNotFoundException("Task Id " + taskId + " does not belong to Board Id " + boardId);
         }
 
-        return modelMapper.map(task, TaskDetailResponseDTO.class);
+        TaskDetailResponseDTO taskDetailResponseDTO = modelMapper.map(task, TaskDetailResponseDTO.class);
+
+        List<AttachmentResponseDTO> attachmentDTOs = task.getAttachments().stream()
+                .map(attachment -> new AttachmentResponseDTO(
+                        attachment.getId(),
+                        attachment.getFilename(),
+                        attachment.getFilePath(),
+                        attachment.getFileSize(),
+                        attachment.getCreatedOn()
+                ))
+                .collect(Collectors.toList());
+
+        taskDetailResponseDTO.setAttachments(attachmentDTOs);
+        return taskDetailResponseDTO;
     }
 
     @Transactional
@@ -98,12 +106,13 @@ public class TaskService {
 
         Task task = new Task();
         populateTaskFromDTO(task, taskDTO, status, board);
+        task.setAttachmentCount(0);
         Task savedTask = taskRepository.save(task);
         return modelMapper.map(savedTask, TaskAddEditResponseDTO.class);
     }
 
     @Transactional
-    public TaskAddEditResponseDTO updateTask(String id, TaskRequestDTO taskDTO, Integer taskId) {
+    public TaskAddEditResponseDTO updateTask(String id, TaskUpdateRequestDTO taskDTO, Integer taskId, List<MultipartFile> files) {
         Board board = getBoardById(id);
         Task existingTask = getTaskById(taskId);
         Status status = getStatusById(taskDTO.getStatus());
@@ -111,6 +120,18 @@ public class TaskService {
         checkStatusLimit(status);
 
         populateTaskFromDTO(existingTask, taskDTO, status, board);
+
+        List<Attachment> attachments = validateAndHandleAttachmentsWithMultipart(files, existingTask, id, taskId);
+        existingTask.setAttachments(attachments);
+
+        for (Attachment attachment : attachments) {
+            attachment.setTask(existingTask);
+            attachment.setFileSize((int) files.get(attachments.indexOf(attachment)).getSize());
+            attachmentRepository.save(attachment);
+        }
+
+        existingTask.setAttachmentCount(attachments.size());
+
         Task updatedTask = taskRepository.save(existingTask);
         return modelMapper.map(updatedTask, TaskAddEditResponseDTO.class);
     }
@@ -120,7 +141,14 @@ public class TaskService {
         Board board = getBoardById(id);
         Task taskToDelete = getTaskById(taskId);
         validateTaskBelongsToBoard(taskToDelete, board.getId());
+
+        for (Attachment attachment : taskToDelete.getAttachments()) {
+            fileService.deleteFile(id, taskId, attachment.getFilePath());
+            attachmentRepository.delete(attachment);
+        }
+
         taskRepository.deleteById(taskId);
+
         return modelMapper.map(taskToDelete, TaskResponseDTO.class);
     }
 
@@ -146,6 +174,13 @@ public class TaskService {
         task.setBoard(board);
     }
 
+    private void populateTaskFromDTO(Task task, TaskUpdateRequestDTO taskDTO, Status status, Board board) {
+        task.setTitle(Utils.trimString(taskDTO.getTitle()));
+        task.setDescription(Utils.checkAndSetDefaultNull(taskDTO.getDescription()));
+        task.setAssignees(Utils.checkAndSetDefaultNull(taskDTO.getAssignees()));
+        task.setStatus(status);
+        task.setBoard(board);
+    }
     private Board getBoardById(String boardId) {
         return boardRepository.findById(boardId)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
@@ -174,30 +209,88 @@ public class TaskService {
     }
 
     public Board findBoardByIdAndValidateAccess(Claims claims, String id) {
-        // Find the board by its id
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
 
-        // Check if the board is public or requires authentication
         if (!board.getVisibility().equalsIgnoreCase("PUBLIC")) {
-            // If the board is not public, validate claims (authentication required)
             if (claims == null) {
                 throw new ForbiddenException("Authentication required to access this board.");
             }
 
-            // Check ownership
             String oid = (String) claims.get("oid");
-            if (!isOwner(oid, id) && !isCollaborator(oid, id)) {
-                throw new ForbiddenException("You are not allowed to access this board.");
+
+            if (!isOwner(oid, id)) {
+                Optional<Collaborator> collaboratorOpt = collaboratorRepository.findByOidAndBoardId(oid, id);
+
+                if (collaboratorOpt.isEmpty() || collaboratorOpt.get().getStatus() == CollabStatus.PENDING) {
+                    throw new ForbiddenException("You are not allowed to access this board.");
+                }
             }
         }
         return board;
     }
 
     private boolean isCollaborator(String oid, String boardId) {
-        // เช็คจาก database ว่าผู้ใช้มีสิทธิ์เป็น collaborator หรือไม่
         Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
         return collaborator.isPresent();
+    }
+
+    private boolean isOwner(String oid, String boardId) {
+        Board board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
+        return board.getOid().equals(oid);
+    }
+
+    private List<Attachment> validateAndHandleAttachmentsWithMultipart(List<MultipartFile> files, Task task,
+                                                                       String id, Integer taskId) {
+        List<Attachment> attachments = new ArrayList<>();
+        int MAX_FILES = 10;
+        int MAX_FILE_SIZE_MB = 20;
+
+        List<String> errorMessages = new ArrayList<>();
+        List<String> notAddedFiles = new ArrayList<>();
+
+        if (files != null) {
+            int existingAttachmentCount = task.getAttachments().size();
+            for (MultipartFile file : files) {
+                String fileName = file.getOriginalFilename();
+                if (fileName == null) {
+                    continue;
+                }
+
+                String uniqueFilename = String.format("%s_%d_%s", id, taskId, fileName);
+
+                if (task.getAttachments().stream().anyMatch(att -> att.getFilename().equals(uniqueFilename))) {
+                    errorMessages.add("File with the same filename cannot be added. Please delete and add again to update the file.");
+                    notAddedFiles.add(fileName);
+                    continue;
+                }
+
+                if (file.getSize() > MAX_FILE_SIZE_MB * 1024 * 1024) {
+                    errorMessages.add("Each file cannot be larger than " + MAX_FILE_SIZE_MB + " MB.");
+                    notAddedFiles.add(fileName);
+                    continue;
+                }
+
+                if (existingAttachmentCount + attachments.size() >= MAX_FILES) {
+                    errorMessages.add("Each task can have at most " + MAX_FILES + " files.");
+                    notAddedFiles.add(fileName);
+                    continue;
+                }
+
+                String filePath = fileService.store(file, id, taskId);
+                Attachment attachment = new Attachment(uniqueFilename, filePath);
+                attachment.setFileSize((int) file.getSize());
+                attachments.add(attachment);
+            }
+        }
+
+        if (!errorMessages.isEmpty()) {
+            throw new BadRequestException(String.join(" - ", errorMessages) +
+                    "\nThe following files are not added: " + String.join(", ", notAddedFiles));
+        }
+
+        return attachments;
     }
 
 }

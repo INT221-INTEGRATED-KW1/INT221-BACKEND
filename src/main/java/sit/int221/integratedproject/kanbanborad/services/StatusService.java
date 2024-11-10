@@ -1,3 +1,4 @@
+
 package sit.int221.integratedproject.kanbanborad.services;
 
 import io.jsonwebtoken.Claims;
@@ -45,18 +46,9 @@ public class StatusService {
         this.collaboratorRepository = collaboratorRepository;
     }
 
-    // Helper method to check if the user is the owner
-    private boolean isOwner(String oid, String boardId) {
-        Board board = boardRepository.findById(boardId)
-                .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
-        return board.getOid().equals(oid);
-    }
-
     public List<StatusResponseDetailDTO> findAllStatus(Claims claims, String id) {
-        // Validate board access
         Board board = findBoardByIdAndValidateAccess(claims, id);
 
-        // Retrieve all statuses for the board
         List<Status> statuses = board.getStatuses();
         List<StatusResponseDetailDTO> statusResponseDTOs = new ArrayList<>();
         for (Status status : statuses) {
@@ -68,10 +60,8 @@ public class StatusService {
     }
 
     public StatusResponseDTO findStatusById(Claims claims, String id, Integer statusId) {
-        // Validate board access
         Board board = findBoardByIdAndValidateAccess(claims, id);
 
-        // Retrieve the status by statusId and boardId
         Status status = statusRepository.findStatusByIdAndBoardId(statusId, id);
         if (status == null) {
             throw new ItemNotFoundException("Status Id " + statusId + " does not belong to Board Id " + id);
@@ -79,22 +69,15 @@ public class StatusService {
         return modelMapper.map(status, StatusResponseDTO.class);
     }
 
-    /**
-     * Utility method to validate board access based on visibility and ownership.
-     */
     private Board findBoardByIdAndValidateAccess(Claims claims, String id) {
-        // Find the board by its id
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
 
-        // Check if the board is public or requires authentication
         if (!board.getVisibility().equalsIgnoreCase("PUBLIC")) {
-            // If the board is not public, validate claims (authentication required)
             if (claims == null) {
                 throw new ForbiddenException("Authentication required to access this board.");
             }
 
-            // Check ownership
             String oid = (String) claims.get("oid");
             if (!isOwner(oid, id) && !isCollaborator(oid, id)) {
                 throw new ForbiddenException("You are not allowed to access this board.");
@@ -108,7 +91,6 @@ public class StatusService {
         Board board = findBoardByIdAndValidate(id);
         Status status = new Status();
 
-        // ตรวจสอบว่ามีสถานะชื่อเดียวกันอยู่ในบอร์ดแล้วหรือไม่
         boolean statusExists = statusRepository.existsByNameAndBoardId(statusDTO.getName(), board.getId());
         if (statusExists) {
             throw new StatusUniqueException("Status name '" + statusDTO.getName() + "' already exists in board '" + board.getName() + "'");
@@ -128,7 +110,6 @@ public class StatusService {
 
         validateStatusModification(existingStatus);
 
-        // ตรวจสอบว่าชื่อสถานะใหม่ที่จะอัปเดตซ้ำกับสถานะอื่นในบอร์ดเดียวกันหรือไม่
         if (!existingStatus.getName().equals(statusDTO.getName())) {
             boolean statusExists = statusRepository.existsByNameAndBoardId(statusDTO.getName(), board.getId());
             if (statusExists) {
@@ -237,8 +218,13 @@ public class StatusService {
     }
 
     private boolean isCollaborator(String oid, String boardId) {
-        // เช็คจาก database ว่าผู้ใช้มีสิทธิ์เป็น collaborator หรือไม่
         Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
         return collaborator.isPresent();
+    }
+
+    private boolean isOwner(String oid, String boardId) {
+        Board board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
+        return board.getOid().equals(oid);
     }
 }

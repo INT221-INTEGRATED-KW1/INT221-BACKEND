@@ -117,7 +117,6 @@ public class JwtTokenUtil implements Serializable {
                 .signWith(signatureAlgorithm, getSignInKey()).compact();
     }
 
-
     public Boolean validateToken(String token, AuthenticateUser userDetails) {
         final String oid = getOidFromToken(token);
         return (oid.equals(userDetails.oid()) && !isTokenExpired(token));

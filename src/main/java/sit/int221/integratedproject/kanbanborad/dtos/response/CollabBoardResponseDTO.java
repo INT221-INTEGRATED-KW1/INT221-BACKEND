@@ -13,4 +13,5 @@ public class CollabBoardResponseDTO {
     private OwnerResponseDTO owner;
     private String visibility;
     private String access_right;
+    private String invitationStatus;
 }
