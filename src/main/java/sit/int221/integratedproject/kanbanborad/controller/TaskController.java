@@ -174,6 +174,17 @@ public class TaskController {
                 .body(resource);
     }
 
+    @DeleteMapping("/{id}/tasks/{taskId}/delete")
+    public ResponseEntity<String> deleteFile(@PathVariable String id, @PathVariable Integer taskId,
+                                             @RequestParam String url) {
+        String fileName = url.substring(url.lastIndexOf("/") + 1);
+
+        fileService.deleteFile(id, taskId, fileName);
+
+        return ResponseEntity.ok("delete file successfully");
+    }
+
+
     @GetMapping("/test")
     public ResponseEntity<Object> testPropertiesMapping() {
         return ResponseEntity.ok(fileService.getFileStorageLocation() + " has been created !!!");
