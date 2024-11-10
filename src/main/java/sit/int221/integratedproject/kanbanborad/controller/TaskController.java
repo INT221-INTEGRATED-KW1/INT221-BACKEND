@@ -3,6 +3,8 @@ package sit.int221.integratedproject.kanbanborad.controller;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.validation.Valid;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +32,8 @@ import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
 import java.util.List;
 import java.util.Optional;
+
+import static org.springframework.web.servlet.function.RequestPredicates.contentType;
 
 @RestController
 @RequestMapping("/v3/boards")
@@ -119,7 +123,7 @@ public class TaskController {
             @ModelAttribute @Valid TaskUpdateRequestDTO taskDTO,
             @PathVariable Integer taskId,
             @RequestHeader(value = "Authorization") String token,
-            @RequestParam("file") List<MultipartFile> files) {
+            @RequestParam("files") List<MultipartFile> files) {
         Board board = validateBoardAndOwnership(id, token);
 
         if (taskDTO == null) {
@@ -137,6 +141,38 @@ public class TaskController {
         return ResponseEntity.status(HttpStatus.OK).body(taskService.deleteTask(id, taskId));
     }
 
+    @GetMapping("/{id}/tasks/{taskId}/download")
+    public ResponseEntity<Resource> downloadFile(@PathVariable String id, @PathVariable Integer taskId,
+                                                 @RequestParam String url) {
+        String fileName = url.substring(url.lastIndexOf("/") + 1);
+
+        Resource resource = fileService.loadFileAsResource(id, taskId, fileName);
+
+        String fileExtension = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
+
+        MediaType mediaType;
+        switch (fileExtension) {
+            case "jpg":
+            case "jpeg":
+                mediaType = MediaType.IMAGE_JPEG;
+                break;
+            case "png":
+                mediaType = MediaType.IMAGE_PNG;
+                break;
+            case "pdf":
+                mediaType = MediaType.APPLICATION_PDF;
+                break;
+            default:
+                mediaType = MediaType.APPLICATION_OCTET_STREAM;
+                break;
+        }
+
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                .body(resource);
+    }
+
     @GetMapping("/test")
     public ResponseEntity<Object> testPropertiesMapping() {
         return ResponseEntity.ok(fileService.getFileStorageLocation() + " has been created !!!");
@@ -146,6 +182,7 @@ public class TaskController {
         return boardRepository.findById(boardId)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
     }
+
     private Claims validateToken(String token) {
         return Utils.getClaims(token, jwtTokenUtil);
     }

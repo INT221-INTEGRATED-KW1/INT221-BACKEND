@@ -143,7 +143,7 @@ public class TaskService {
         validateTaskBelongsToBoard(taskToDelete, board.getId());
 
         for (Attachment attachment : taskToDelete.getAttachments()) {
-            fileService.deleteFile(attachment.getFilePath());
+            fileService.deleteFile(id, taskId, attachment.getFilePath());
             attachmentRepository.delete(attachment);
         }
 
@@ -278,7 +278,7 @@ public class TaskService {
                     continue;
                 }
 
-                String filePath = fileService.store(file);
+                String filePath = fileService.store(file, id, taskId);
                 Attachment attachment = new Attachment(uniqueFilename, filePath);
                 attachment.setFileSize((int) file.getSize());
                 attachments.add(attachment);

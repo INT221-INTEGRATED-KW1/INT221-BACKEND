@@ -7,6 +7,7 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.properties.FileStorageProperties;
 
 import java.io.IOException;
@@ -31,49 +32,55 @@ public class FileService {
                 Files.createDirectories(this.fileStorageLocation);
             }
         } catch (IOException ex) {
-            throw new RuntimeException(
-                    "Could not create the directory where the uploaded files will be stored.", ex);
+            throw new ItemNotFoundException(
+                    "Could not create the directory where the uploaded files will be stored.");
         }
     }
 
-    public String store(MultipartFile file) {
+    public String store(MultipartFile file, String boardId, Integer taskId) {
         String fileName = StringUtils.cleanPath(file.getOriginalFilename());
         try {
             if (fileName.contains("..")) {
-                throw new RuntimeException("Sorry! Filename contains invalid path sequence " + fileName);
+                throw new ItemNotFoundException("Sorry! Filename contains invalid path sequence " + fileName);
             }
-            Path targetLocation = this.fileStorageLocation.resolve(fileName);
+
+            Path targetDirectory = this.fileStorageLocation.resolve(boardId).resolve(taskId.toString());
+            if (!Files.exists(targetDirectory)) {
+                Files.createDirectories(targetDirectory);
+            }
+
+            Path targetLocation = targetDirectory.resolve(fileName);
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
-            return fileName;
+            return targetLocation.toString();
         } catch (IOException ex) {
-            throw new RuntimeException("Could not store file " + fileName + ". Please try again!", ex);
+            throw new ItemNotFoundException("Could not store file " + fileName + ". Please try again!");
         }
     }
 
-    public void deleteFile(String fileName) {
+    public void deleteFile(String boardId, Integer taskId, String fileName) {
         try {
-            Path filePath = this.fileStorageLocation.resolve(fileName).normalize();
+            Path filePath = this.fileStorageLocation.resolve(boardId).resolve(taskId.toString()).resolve(fileName).normalize();
             if (Files.exists(filePath)) {
                 Files.delete(filePath);
             } else {
-                throw new RuntimeException("File not found " + fileName);
+                throw new ItemNotFoundException("File not found " + fileName);
             }
         } catch (IOException ex) {
-            throw new RuntimeException("File operation error: " + fileName, ex);
+            throw new ItemNotFoundException("File operation error: " + fileName);
         }
     }
 
-    public Resource loadFileAsResource(String fileName) {
+    public Resource loadFileAsResource(String boardId, Integer taskId, String fileName) {
         try {
-            Path filePath = this.fileStorageLocation.resolve(fileName).normalize();
+            Path filePath = this.fileStorageLocation.resolve(boardId).resolve(taskId.toString()).resolve(fileName).normalize();
             Resource resource = new UrlResource(filePath.toUri());
             if (resource.exists()) {
                 return resource;
             } else {
-                throw new RuntimeException("File not found " + fileName);
+                throw new ItemNotFoundException("File not found " + fileName);
             }
         } catch (MalformedURLException ex) {
-            throw new RuntimeException("File operation error: " + fileName, ex);
+            throw new ItemNotFoundException("File operation error: " + fileName);
         }
     }
 
