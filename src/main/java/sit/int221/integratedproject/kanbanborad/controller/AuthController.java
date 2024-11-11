@@ -18,8 +18,7 @@ import sit.int221.integratedproject.kanbanborad.services.AuthService;
 import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
 
 @RestController
-@CrossOrigin(origins = {"http://ip23kw1.sit.kmutt.ac.th", "http://intproj23.sit.kmutt.ac.th",
-        "https://ip23kw1.sit.kmutt.ac.th", "https://intproj23.sit.kmutt.ac.th"})
+@CrossOrigin(origins = "http://localhost")
 public class AuthController {
     private final JwtTokenUtil jwtTokenUtil;
     private final AuthenticationManager authenticationManager;
