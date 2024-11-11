@@ -16,12 +16,14 @@ import sit.int221.integratedproject.kanbanborad.dtos.request.TaskUpdateRequestDT
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskAddEditResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskDetailResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
+import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Attachment;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Collaborator;
 import sit.int221.integratedproject.kanbanborad.enumeration.CollabStatus;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
+import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.AttachmentRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.CollaboratorRepository;
 import sit.int221.integratedproject.kanbanborad.services.FileService;
@@ -46,14 +48,16 @@ public class TaskController {
     private final JwtTokenUtil jwtTokenUtil;
     private final CollaboratorRepository collaboratorRepository;
     private final FileService fileService;
+    private final AttachmentRepository attachmentRepository;
 
-    public TaskController(TaskService taskService, BoardRepository boardRepository, StatusService statusService, JwtTokenUtil jwtTokenUtil, CollaboratorRepository collaboratorRepository, FileService fileService) {
+    public TaskController(TaskService taskService, BoardRepository boardRepository, StatusService statusService, JwtTokenUtil jwtTokenUtil, CollaboratorRepository collaboratorRepository, FileService fileService, AttachmentRepository attachmentRepository) {
         this.taskService = taskService;
         this.boardRepository = boardRepository;
         this.statusService = statusService;
         this.jwtTokenUtil = jwtTokenUtil;
         this.collaboratorRepository = collaboratorRepository;
         this.fileService = fileService;
+        this.attachmentRepository = attachmentRepository;
     }
 
     @GetMapping("/{id}/tasks")
@@ -177,13 +181,21 @@ public class TaskController {
     @DeleteMapping("/{id}/tasks/{taskId}/delete")
     public ResponseEntity<String> deleteFile(@PathVariable String id, @PathVariable Integer taskId,
                                              @RequestParam String url) {
-        String fileName = url.substring(url.lastIndexOf("/") + 1);
+        String actualFileName = url.substring(url.lastIndexOf("/") + 1);
 
-        fileService.deleteFile(id, taskId, fileName);
+        String dbFileName = id + "_" + taskId + "_" + actualFileName;
+
+        fileService.deleteFile(id, taskId, actualFileName);
+
+        Optional<Attachment> attachment = attachmentRepository.findByTaskIdAndFilename(taskId, dbFileName);
+        if (attachment.isPresent()) {
+            attachmentRepository.delete(attachment.get());
+        } else {
+            throw new ItemNotFoundException("Attachment not found for file: " + dbFileName);
+        }
 
         return ResponseEntity.ok("delete file successfully");
     }
-
 
     @GetMapping("/test")
     public ResponseEntity<Object> testPropertiesMapping() {
