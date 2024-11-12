@@ -7,4 +7,5 @@ import java.util.Optional;
 
 public interface AttachmentRepository extends JpaRepository<Attachment, Integer> {
     Optional<Attachment> findByTaskIdAndFilename(Integer taskId, String fileName);
+    int countByTaskId(Integer taskId);
 }

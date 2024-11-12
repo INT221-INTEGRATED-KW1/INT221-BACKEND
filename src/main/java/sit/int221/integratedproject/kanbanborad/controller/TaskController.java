@@ -35,8 +35,6 @@ import sit.int221.integratedproject.kanbanborad.utils.Utils;
 import java.util.List;
 import java.util.Optional;
 
-import static org.springframework.web.servlet.function.RequestPredicates.contentType;
-
 @RestController
 @RequestMapping("/v3/boards")
 @CrossOrigin(origins = {"http://ip23kw1.sit.kmutt.ac.th", "http://intproj23.sit.kmutt.ac.th",

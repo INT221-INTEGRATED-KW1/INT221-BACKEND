@@ -121,16 +121,17 @@ public class TaskService {
 
         populateTaskFromDTO(existingTask, taskDTO, status, board);
 
-        List<Attachment> attachments = validateAndHandleAttachmentsWithMultipart(files, existingTask, id, taskId);
-        existingTask.setAttachments(attachments);
+        List<Attachment> newAttachments = validateAndHandleAttachmentsWithMultipart(files, existingTask, id, taskId);
+        existingTask.setAttachments(newAttachments);
 
-        for (Attachment attachment : attachments) {
+        for (Attachment attachment : newAttachments) {
             attachment.setTask(existingTask);
-            attachment.setFileSize((int) files.get(attachments.indexOf(attachment)).getSize());
+            attachment.setFileSize((int) files.get(newAttachments.indexOf(attachment)).getSize());
             attachmentRepository.save(attachment);
         }
 
-        existingTask.setAttachmentCount(attachments.size());
+        int totalAttachmentsCount = attachmentRepository.countByTaskId(taskId);
+        existingTask.setAttachmentCount(totalAttachmentsCount);
 
         Task updatedTask = taskRepository.save(existingTask);
         return modelMapper.map(updatedTask, TaskAddEditResponseDTO.class);
@@ -181,6 +182,7 @@ public class TaskService {
         task.setStatus(status);
         task.setBoard(board);
     }
+
     private Board getBoardById(String boardId) {
         return boardRepository.findById(boardId)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
