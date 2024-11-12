@@ -35,7 +35,6 @@ import sit.int221.integratedproject.kanbanborad.utils.Utils;
 import java.util.List;
 import java.util.Optional;
 
-
 @RestController
 @RequestMapping("/v3/boards")
 @CrossOrigin(origins = "http://localhost")
