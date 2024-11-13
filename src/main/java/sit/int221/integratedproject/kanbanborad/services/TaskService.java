@@ -94,6 +94,10 @@ public class TaskService {
                 .collect(Collectors.toList());
 
         taskDetailResponseDTO.setAttachments(attachmentDTOs);
+
+        int currentAttachmentCount = attachmentRepository.countByTaskId(taskId);
+        taskDetailResponseDTO.setAttachmentCount(currentAttachmentCount);
+
         return taskDetailResponseDTO;
     }
 
