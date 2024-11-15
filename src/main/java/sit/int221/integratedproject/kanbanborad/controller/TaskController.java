@@ -19,6 +19,7 @@ import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Attachment;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Collaborator;
+import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Task;
 import sit.int221.integratedproject.kanbanborad.enumeration.CollabStatus;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
@@ -26,6 +27,7 @@ import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.AttachmentRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.CollaboratorRepository;
+import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.TaskRepository;
 import sit.int221.integratedproject.kanbanborad.services.FileService;
 import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
 import sit.int221.integratedproject.kanbanborad.services.StatusService;
@@ -37,8 +39,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/v3/boards")
-@CrossOrigin(origins = {"http://ip23kw1.sit.kmutt.ac.th", "http://intproj23.sit.kmutt.ac.th",
-        "https://ip23kw1.sit.kmutt.ac.th", "https://intproj23.sit.kmutt.ac.th"})
+@CrossOrigin(origins = "http://localhost")
 public class TaskController {
     private final TaskService taskService;
     private final BoardRepository boardRepository;
@@ -47,8 +48,9 @@ public class TaskController {
     private final CollaboratorRepository collaboratorRepository;
     private final FileService fileService;
     private final AttachmentRepository attachmentRepository;
+    private final TaskRepository taskRepository;
 
-    public TaskController(TaskService taskService, BoardRepository boardRepository, StatusService statusService, JwtTokenUtil jwtTokenUtil, CollaboratorRepository collaboratorRepository, FileService fileService, AttachmentRepository attachmentRepository) {
+    public TaskController(TaskService taskService, BoardRepository boardRepository, StatusService statusService, JwtTokenUtil jwtTokenUtil, CollaboratorRepository collaboratorRepository, FileService fileService, AttachmentRepository attachmentRepository, TaskRepository taskRepository) {
         this.taskService = taskService;
         this.boardRepository = boardRepository;
         this.statusService = statusService;
@@ -56,6 +58,7 @@ public class TaskController {
         this.collaboratorRepository = collaboratorRepository;
         this.fileService = fileService;
         this.attachmentRepository = attachmentRepository;
+        this.taskRepository = taskRepository;
     }
 
     @GetMapping("/{id}/tasks")
@@ -180,7 +183,6 @@ public class TaskController {
     public ResponseEntity<String> deleteFile(@PathVariable String id, @PathVariable Integer taskId,
                                              @RequestParam String url) {
         String actualFileName = url.substring(url.lastIndexOf("/") + 1);
-
         String dbFileName = id + "_" + taskId + "_" + actualFileName;
 
         fileService.deleteFile(id, taskId, actualFileName);
@@ -188,13 +190,19 @@ public class TaskController {
         Optional<Attachment> attachment = attachmentRepository.findByTaskIdAndFilename(taskId, dbFileName);
         if (attachment.isPresent()) {
             attachmentRepository.delete(attachment.get());
+
+            int updatedAttachmentCount = attachmentRepository.countByTaskId(taskId);
+
+            Task task = taskRepository.findById(taskId)
+                    .orElseThrow(() -> new ItemNotFoundException("Task not found for id: " + taskId));
+            task.setAttachmentCount(updatedAttachmentCount);
+            taskRepository.save(task);
         } else {
             throw new ItemNotFoundException("Attachment not found for file: " + dbFileName);
         }
 
         return ResponseEntity.ok("delete file successfully");
     }
-
     @GetMapping("/test")
     public ResponseEntity<Object> testPropertiesMapping() {
         return ResponseEntity.ok(fileService.getFileStorageLocation() + " has been created !!!");
