@@ -16,7 +16,6 @@ import sit.int221.integratedproject.kanbanborad.exceptions.TokenIsMissingExcepti
 import sit.int221.integratedproject.kanbanborad.exceptions.TokenNotWellException;
 import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.security.Key;
 import java.util.Date;
@@ -76,6 +75,7 @@ public class JwtTokenUtil implements Serializable {
         return doGenerateToken(claims);
     }
 
+
     public String generateRefreshToken(Authentication authentication) {
         User user = getUserFromAuthentication(authentication);
 
@@ -117,9 +117,25 @@ public class JwtTokenUtil implements Serializable {
                 .signWith(signatureAlgorithm, getSignInKey()).compact();
     }
 
+    public String generateTokenWithOid(String oid) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("oid", oid);
+        return Jwts.builder()
+                .setClaims(claims)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + JWT_TOKEN_VALIDITY))
+                .signWith(SignatureAlgorithm.HS256, getSignInKey())
+                .compact();
+    }
+
     public Boolean validateToken(String token, AuthenticateUser userDetails) {
         final String oid = getOidFromToken(token);
         return (oid.equals(userDetails.oid()) && !isTokenExpired(token));
+    }
+
+    public Boolean validateToken(String token, String oid) {
+        final String tokenOid = getOidFromToken(token);
+        return (tokenOid.equals(oid) && !isTokenExpired(token));
     }
 
     public Boolean validateRefreshToken(String token) {

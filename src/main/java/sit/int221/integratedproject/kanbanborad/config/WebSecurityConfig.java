@@ -6,7 +6,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
@@ -31,13 +30,23 @@ public class WebSecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
-        httpSecurity.csrf(csrf -> csrf.disable())
+        httpSecurity
+                .csrf(csrf -> csrf.disable())
                 .authorizeRequests(authorize -> authorize
-                        .requestMatchers("/login", "/token", "/v3/boards/*", "/v3/boards/*/collabs","/v3/boards/*/collabs/*" ,"/v3/boards/*/tasks", "/v3/boards/*/statuses",
-                                "/v3/boards/*/tasks/*", "/v3/boards/*/statuses/*", "/v3/boards/*/maximum-status").permitAll()  // อนุญาต GET tasks, statuses สำหรับทุกคน
+                        // อนุญาต endpoint สาธารณะ
+                        .requestMatchers("/login", "/token",
+                                "/v3/boards/*", "/v3/boards/*/collabs",
+                                "/v3/boards/*/collabs/*", "/v3/boards/*/tasks",
+                                "/v3/boards/*/statuses", "/v3/boards/*/tasks/*",
+                                "/v3/boards/*/statuses/*", "/v3/boards/*/maximum-status").permitAll()
+                        .requestMatchers("/login/oauth2/code/microsoft").permitAll()
                         .anyRequest().authenticated())
+                .oauth2Login(oauth2 -> oauth2
+                        .loginPage("/oauth2/authorization/microsoft")
+                        .defaultSuccessUrl("/v3/boards", true))
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .httpBasic(withDefaults());
-        httpSecurity.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
         return httpSecurity.build();
     }
 

@@ -7,15 +7,20 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import sit.int221.integratedproject.kanbanborad.dtos.request.JwtRequestUser;
 import sit.int221.integratedproject.kanbanborad.dtos.response.LoginResponseDTO;
+import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
 import sit.int221.integratedproject.kanbanborad.exceptions.GeneralException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
+import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.RefreshTokenRepository;
 import sit.int221.integratedproject.kanbanborad.services.AuthService;
 import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
+
+import java.util.Map;
 
 @RestController
 @CrossOrigin(origins = "http://localhost")
@@ -24,12 +29,14 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final RefreshTokenRepository refreshTokenRepository;
     private final AuthService authService;
+    private final UserRepository userRepository;
 
-    public AuthController(JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager, RefreshTokenRepository refreshTokenRepository, AuthService authService) {
+    public AuthController(JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager, RefreshTokenRepository refreshTokenRepository, AuthService authService, UserRepository userRepository) {
         this.jwtTokenUtil = jwtTokenUtil;
         this.authenticationManager = authenticationManager;
         this.refreshTokenRepository = refreshTokenRepository;
         this.authService = authService;
+        this.userRepository = userRepository;
     }
 
     @PostMapping("/login")
@@ -74,6 +81,27 @@ public class AuthController {
         }
 
         return ResponseEntity.ok(authService.refreshAccessToken(claims));
+    }
+
+    @GetMapping("/login/oauth2/code/microsoft")
+    public ResponseEntity<Object> handleMicrosoftLogin(OAuth2AuthenticationToken authentication) {
+        Map<String, Object> attributes = authentication.getPrincipal().getAttributes();
+        String oid = (String) attributes.get("oid");
+        String email = (String) attributes.get("email");
+        String name = (String) attributes.get("name");
+
+        User user = userRepository.findByOid(oid).orElseGet(() -> {
+            User newUser = new User();
+            newUser.setOid(oid);
+            newUser.setEmail(email);
+            newUser.setName(name);
+            userRepository.save(newUser);
+            return newUser;
+        });
+
+        String accessToken = jwtTokenUtil.generateTokenWithOid(user.getOid());
+
+        return ResponseEntity.ok(new LoginResponseDTO(accessToken, null));
     }
 
 }
