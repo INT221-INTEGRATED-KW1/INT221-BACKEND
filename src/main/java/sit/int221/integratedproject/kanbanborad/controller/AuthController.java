@@ -83,25 +83,4 @@ public class AuthController {
         return ResponseEntity.ok(authService.refreshAccessToken(claims));
     }
 
-    @GetMapping("/login/oauth2/code/microsoft")
-    public ResponseEntity<Object> handleMicrosoftLogin(OAuth2AuthenticationToken authentication) {
-        Map<String, Object> attributes = authentication.getPrincipal().getAttributes();
-        String oid = (String) attributes.get("oid");
-        String email = (String) attributes.get("email");
-        String name = (String) attributes.get("name");
-
-        User user = userRepository.findByOid(oid).orElseGet(() -> {
-            User newUser = new User();
-            newUser.setOid(oid);
-            newUser.setEmail(email);
-            newUser.setName(name);
-            userRepository.save(newUser);
-            return newUser;
-        });
-
-        String accessToken = jwtTokenUtil.generateTokenWithOid(user.getOid());
-
-        return ResponseEntity.ok(new LoginResponseDTO(accessToken, null));
-    }
-
 }
