@@ -39,14 +39,9 @@ public class WebSecurityConfig {
                                 "/v3/boards/*/collabs/*", "/v3/boards/*/tasks",
                                 "/v3/boards/*/statuses", "/v3/boards/*/tasks/*",
                                 "/v3/boards/*/statuses/*", "/v3/boards/*/maximum-status").permitAll()
-                        .requestMatchers("/login/oauth2/code/microsoft").permitAll()
                         .anyRequest().authenticated())
-                .oauth2Login(oauth2 -> oauth2
-                        .loginPage("/oauth2/authorization/microsoft")
-                        .defaultSuccessUrl("/v3/boards", true))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .httpBasic(withDefaults());
-
         return httpSecurity.build();
     }
 
