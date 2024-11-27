@@ -129,7 +129,7 @@ public class TaskController {
             @ModelAttribute @Valid TaskUpdateRequestDTO taskDTO,
             @PathVariable Integer taskId,
             @RequestHeader(value = "Authorization") String token,
-            @RequestParam("files") List<MultipartFile> files) {
+            @RequestParam(value = "files", required = false) List<MultipartFile> files) {
         Board board = validateBoardAndOwnership(id, token);
 
         if (taskDTO == null) {

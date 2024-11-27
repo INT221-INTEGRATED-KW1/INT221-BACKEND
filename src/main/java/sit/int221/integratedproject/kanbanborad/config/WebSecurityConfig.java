@@ -30,18 +30,13 @@ public class WebSecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
-        httpSecurity
-                .csrf(csrf -> csrf.disable())
+        httpSecurity.csrf(csrf -> csrf.disable())
                 .authorizeRequests(authorize -> authorize
-                        // อนุญาต endpoint สาธารณะ
-                        .requestMatchers("/login", "/token",
-                                "/v3/boards/*", "/v3/boards/*/collabs",
-                                "/v3/boards/*/collabs/*", "/v3/boards/*/tasks",
-                                "/v3/boards/*/statuses", "/v3/boards/*/tasks/*",
-                                "/v3/boards/*/statuses/*", "/v3/boards/*/maximum-status").permitAll()
+                        .requestMatchers("/login", "/token", "/v3/boards/*", "/v3/boards/*/collabs","/v3/boards/*/collabs/*" ,"/v3/boards/*/tasks", "/v3/boards/*/statuses",
+                                "/v3/boards/*/tasks/*", "/v3/boards/*/statuses/*", "/v3/boards/*/maximum-status").permitAll()  // อนุญาต GET tasks, statuses สำหรับทุกคน
                         .anyRequest().authenticated())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .httpBasic(withDefaults());
+        httpSecurity.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return httpSecurity.build();
     }
 

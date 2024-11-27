@@ -83,6 +83,7 @@ public class StatusController {
                                                                 @RequestBody(required = false) @Valid StatusRequestDTO statusDTO,
                                                                 @PathVariable Integer statusId,
                                                                 @RequestHeader(value = "Authorization") String token) {
+        System.out.println("testza");
         Board board = validateBoardAndOwnership(id, token);
 
         if (statusDTO == null) {

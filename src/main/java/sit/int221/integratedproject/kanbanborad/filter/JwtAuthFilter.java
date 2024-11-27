@@ -46,7 +46,13 @@ public class    JwtAuthFilter extends OncePerRequestFilter {
         String jwtToken = null;
 
         String requestURI = request.getRequestURI();
-        if (isPublicEndpoint(requestURI)) {
+        String method = request.getMethod();
+        if (requestURI.equals("/login") || requestURI.equals("/token")) {
+            chain.doFilter(request, response);
+            return;
+        }
+
+        if (isPublicEndpoint(requestURI, method)) {
             chain.doFilter(request, response);
             return;
         }
@@ -56,9 +62,9 @@ public class    JwtAuthFilter extends OncePerRequestFilter {
                 jwtToken = requestTokenHeader.substring(7);
 
                 if (isMicrosoftToken(jwtToken)) {
-                    oid = validateMicrosoftToken(jwtToken); // Validate และดึง OID
+                    oid = validateMicrosoftToken(jwtToken);
                 } else if (isLocalJwt(jwtToken)) {
-                    oid = jwtTokenUtil.getOidFromToken(jwtToken); // JWT ของระบบ
+                    oid = jwtTokenUtil.getOidFromToken(jwtToken);
                     validateLocalJwt(jwtToken, oid);
                 } else {
                     throw new TokenNotWellException("JWT Token not well-formed");
@@ -114,9 +120,13 @@ public class    JwtAuthFilter extends OncePerRequestFilter {
         }
     }
 
-    private boolean isPublicEndpoint(String requestURI) {
-        return requestURI.matches("/v3/boards/[A-Za-z0-9]+") ||
-                requestURI.matches("/v3/boards/[A-Za-z0-9]+/statuses(/\\d+)?");
+    private boolean isPublicEndpoint(String requestURI, String method) {
+        return method.equalsIgnoreCase("GET") &&
+                (requestURI.matches("/v3/boards/[A-Za-z0-9]+") ||
+                        requestURI.matches("/v3/boards/[A-Za-z0-9]+/collabs") ||
+                        requestURI.matches("/v3/boards/[A-Za-z0-9]+/collabs/[A-Za-z0-9]+") ||
+                        requestURI.matches("/v3/boards/[A-Za-z0-9]+/statuses(/\\d+)?") ||
+                        requestURI.matches("/v3/boards/[A-Za-z0-9]+/tasks(/\\d+)?"));
     }
 
     private void handleException(JwtErrorType type, HttpServletResponse response, String message, HttpStatus status, String instance)
