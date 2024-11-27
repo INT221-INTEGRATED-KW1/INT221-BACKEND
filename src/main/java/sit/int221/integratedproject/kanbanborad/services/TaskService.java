@@ -147,11 +147,6 @@ public class TaskService {
         Task taskToDelete = getTaskById(taskId);
         validateTaskBelongsToBoard(taskToDelete, board.getId());
 
-        for (Attachment attachment : taskToDelete.getAttachments()) {
-            fileService.deleteFile(id, taskId, attachment.getFilePath());
-            attachmentRepository.delete(attachment);
-        }
-
         taskRepository.deleteById(taskId);
 
         return modelMapper.map(taskToDelete, TaskResponseDTO.class);
