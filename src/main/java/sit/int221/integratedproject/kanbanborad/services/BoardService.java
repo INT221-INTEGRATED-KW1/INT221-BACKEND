@@ -12,6 +12,7 @@ import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Collaborator;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Status;
+import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.UserOwn;
 import sit.int221.integratedproject.kanbanborad.enumeration.CollabStatus;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
@@ -20,6 +21,7 @@ import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRep
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.CollaboratorRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.StatusRepository;
+import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.UserOwnRepository;
 import sit.int221.integratedproject.kanbanborad.utils.ListMapper;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
@@ -37,8 +39,9 @@ public class BoardService {
     private final JwtTokenUtil jwtTokenUtil;
     private final StatusRepository statusRepository;
     private final CollaboratorRepository collaboratorRepository;
+    private final UserOwnRepository userOwnRepository;
 
-    public BoardService(BoardRepository boardRepository, ListMapper listMapper, ModelMapper modelMapper, UserRepository userRepository, JwtTokenUtil jwtTokenUtil, StatusRepository statusRepository, CollaboratorRepository collaboratorRepository) {
+    public BoardService(BoardRepository boardRepository, ListMapper listMapper, ModelMapper modelMapper, UserRepository userRepository, JwtTokenUtil jwtTokenUtil, StatusRepository statusRepository, CollaboratorRepository collaboratorRepository, UserOwnRepository userOwnRepository) {
         this.boardRepository = boardRepository;
         this.listMapper = listMapper;
         this.modelMapper = modelMapper;
@@ -46,6 +49,7 @@ public class BoardService {
         this.jwtTokenUtil = jwtTokenUtil;
         this.statusRepository = statusRepository;
         this.collaboratorRepository = collaboratorRepository;
+        this.userOwnRepository = userOwnRepository;
     }
 
     public List<CollaboratorResponseDTO> getCollaborators(String boardId) {
@@ -81,7 +85,7 @@ public class BoardService {
     public BoardsResponseDTO getAllBoards(Claims claims) {
         String oid = (String) claims.get("oid");
 
-        User user = userRepository.findById(oid)
+        UserOwn user = userOwnRepository.findById(oid)
                 .orElseThrow(() -> new ItemNotFoundException("User Id " + oid + " DOES NOT EXIST !!!"));
 
         List<Board> personalBoards = boardRepository.findByOid(oid);
@@ -110,7 +114,7 @@ public class BoardService {
                     return new CollabBoardResponseDTO(
                             board.getId(),
                             board.getName(),
-                            convertToOwnerDTO(userRepository.findById(board.getOid())
+                            convertToOwnerDTO(userOwnRepository.findById(board.getOid())
                                     .orElseThrow(() -> new ItemNotFoundException("Owner not found!"))),
                             board.getVisibility(),
                             accessRight,
@@ -122,7 +126,7 @@ public class BoardService {
         return new BoardsResponseDTO(personalBoardDTOs, collabBoardDTOs);
     }
 
-    private OwnerResponseDTO convertToOwnerDTO(User user) {
+    private OwnerResponseDTO convertToOwnerDTO(UserOwn user) {
         return new OwnerResponseDTO(user.getOid(), user.getName());
     }
 

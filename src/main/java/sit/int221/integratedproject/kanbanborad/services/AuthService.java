@@ -1,6 +1,8 @@
+
 package sit.int221.integratedproject.kanbanborad.services;
 
 import io.jsonwebtoken.Claims;
+import jakarta.transaction.Transactional;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -40,6 +42,7 @@ public class AuthService {
         this.userOwnRepository = userOwnRepository;
     }
 
+    @Transactional
     public LoginResponseDTO login(JwtRequestUser jwtRequestUser) {
         try {
             Authentication authentication = authenticationManager.authenticate(
@@ -59,10 +62,6 @@ public class AuthService {
             user.setEmail(findUserShare.getEmail());
             userOwnRepository.save(user);
 
-            RefreshToken refreshTokenEntity = new RefreshToken(null, refreshToken, authenticatedUser.oid(), String.valueOf(System.currentTimeMillis()));
-
-            refreshTokenRepository.save(refreshTokenEntity);
-
             return new LoginResponseDTO(accessToken, refreshToken);
         } catch (AuthenticationException e) {
             throw new UsernameNotFoundException("Username or Password is incorrect");
@@ -76,7 +75,6 @@ public class AuthService {
 
         User user = userRepository.findByOid(oid)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-
 
         Authentication authentication = new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword());
         String newAccessToken = jwtTokenUtil.generateToken(authentication);

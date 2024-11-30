@@ -1,30 +1,40 @@
 package sit.int221.integratedproject.kanbanborad.services;
 
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.jwk.source.RemoteJWKSet;
+import com.nimbusds.jose.proc.JWSKeySelector;
+import com.nimbusds.jose.proc.JWSVerificationKeySelector;
+import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
+import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
+import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 import sit.int221.integratedproject.kanbanborad.dtos.response.AuthenticateUser;
 import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
-import sit.int221.integratedproject.kanbanborad.exceptions.TokenIsMissingException;
-import sit.int221.integratedproject.kanbanborad.exceptions.TokenNotWellException;
 import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;
 
 import java.io.Serializable;
+import java.net.URL;
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
+
 @Component
 public class JwtTokenUtil implements Serializable {
+    private final String ISSUER = "https://login.microsoftonline.com/79845616-9df0-43e0-8842-e300feb2642a/v2.0";
+    private final String JWK_URI = "https://login.microsoftonline.com/79845616-9df0-43e0-8842-e300feb2642a/discovery/v2.0/keys";
+    private final String AUDIENCE = "c24bef80-9a21-4c60-95a8-92babebc1a5c";
     @Value("${jwt.secret}")
     private String SECRET_KEY;
     @Value("#{${jwt.max-token-interval-hour}*60*60*1000}")
@@ -33,7 +43,6 @@ public class JwtTokenUtil implements Serializable {
     private long JWT_REFRESH_TOKEN_VALIDITY;
     private final SignatureAlgorithm signatureAlgorithm = SignatureAlgorithm.HS256;
     private final UserRepository userRepository;
-    private final String ISSUER = "https://intproj23.sit.kmutt.ac.th/kw1/";
 
     public JwtTokenUtil(UserRepository userRepository) {
         this.userRepository = userRepository;
@@ -74,7 +83,6 @@ public class JwtTokenUtil implements Serializable {
 
         return doGenerateToken(claims);
     }
-
 
     public String generateRefreshToken(Authentication authentication) {
         User user = getUserFromAuthentication(authentication);

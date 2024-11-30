@@ -1,6 +1,7 @@
 
 package sit.int221.integratedproject.kanbanborad.filter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jwt.SignedJWT;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
@@ -17,25 +18,31 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.server.ResponseStatusException;
 import sit.int221.integratedproject.kanbanborad.enumeration.JwtErrorType;
 import sit.int221.integratedproject.kanbanborad.exceptions.TokenIsMissingException;
 import sit.int221.integratedproject.kanbanborad.exceptions.TokenNotWellException;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
 import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
 import sit.int221.integratedproject.kanbanborad.services.JwtUserDetailsService;
+import sit.int221.integratedproject.kanbanborad.services.MicrosoftUserDetailsService;
 
 import java.io.IOException;
+import java.util.Base64;
+import java.util.Map;
 
 @Component
-public class    JwtAuthFilter extends OncePerRequestFilter {
+public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtUserDetailsService jwtUserDetailsService;
     private final JwtTokenUtil jwtTokenUtil;
     private final BoardRepository boardRepository;
+    private final MicrosoftUserDetailsService microsoftUserDetailsService;
 
-    public JwtAuthFilter(JwtUserDetailsService jwtUserDetailsService, JwtTokenUtil jwtTokenUtil, BoardRepository boardRepository) {
+    public JwtAuthFilter(JwtUserDetailsService jwtUserDetailsService, JwtTokenUtil jwtTokenUtil, BoardRepository boardRepository, MicrosoftUserDetailsService microsoftUserDetailsService) {
         this.jwtUserDetailsService = jwtUserDetailsService;
         this.jwtTokenUtil = jwtTokenUtil;
         this.boardRepository = boardRepository;
+        this.microsoftUserDetailsService = microsoftUserDetailsService;
     }
 
     @Override
@@ -47,6 +54,7 @@ public class    JwtAuthFilter extends OncePerRequestFilter {
 
         String requestURI = request.getRequestURI();
         String method = request.getMethod();
+
         if (requestURI.equals("/login") || requestURI.equals("/token")) {
             chain.doFilter(request, response);
             return;
@@ -63,23 +71,38 @@ public class    JwtAuthFilter extends OncePerRequestFilter {
 
                 if (isMicrosoftToken(jwtToken)) {
                     oid = validateMicrosoftToken(jwtToken);
-                } else if (isLocalJwt(jwtToken)) {
+                }
+                else if (isLocalJwt(jwtToken)) {
                     oid = jwtTokenUtil.getOidFromToken(jwtToken);
                     validateLocalJwt(jwtToken, oid);
-                } else {
+                }
+                else {
                     throw new TokenNotWellException("JWT Token not well-formed");
                 }
 
                 if (oid != null) {
-                    UserDetails userDetails = jwtUserDetailsService.loadUserByOid(oid);
-                    UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                    if (isMicrosoftToken(jwtToken)) {
+                        UserDetails microsoftUserDetails = microsoftUserDetailsService.loadUserByOid(oid);
+                        UsernamePasswordAuthenticationToken microsoftAuthToken =
+                                new UsernamePasswordAuthenticationToken(microsoftUserDetails, null, microsoftUserDetails.getAuthorities());
+                        System.out.println(microsoftAuthToken);
+                        microsoftAuthToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(microsoftAuthToken);
+                    }
+                    else if (isLocalJwt(jwtToken)) {
+                        UserDetails userDetails = jwtUserDetailsService.loadUserByOid(oid);
+                        UsernamePasswordAuthenticationToken authToken =
+                                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                        System.out.println(authToken);
+                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
+                    }
                 }
-            } else if (requestTokenHeader == null) {
+            }
+            else if (requestTokenHeader == null) {
                 throw new TokenIsMissingException("JWT Token is missing");
-            } else {
+            }
+            else {
                 throw new TokenNotWellException("JWT Token not well-formed");
             }
 
@@ -98,13 +121,32 @@ public class    JwtAuthFilter extends OncePerRequestFilter {
         }
     }
 
+    private String getIssuer(String token) {
+        try {
+            String[] parts = token.split("\\.");
+            if (parts.length != 3) {
+                return null;
+            }
+            String payload = new String(Base64.getUrlDecoder().decode(parts[1]));
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> claims = mapper.readValue(payload, Map.class);
+            return (String) claims.get("iss");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null; // เกิดข้อผิดพลาด
+        }
+    }
+
     private boolean isLocalJwt(String token) {
-        return token.split("\\.").length == 3;
+        String issuer = getIssuer(token);
+        return "https://intproj23.sit.kmutt.ac.th/kw1/".equals(issuer);
     }
 
     private boolean isMicrosoftToken(String token) {
-        return token.contains(".");
+        String issuer = getIssuer(token);
+        return issuer != null && issuer.contains("microsoft");
     }
+
     private String validateMicrosoftToken(String token) {
         try {
             SignedJWT signedJWT = SignedJWT.parse(token);
@@ -122,11 +164,11 @@ public class    JwtAuthFilter extends OncePerRequestFilter {
 
     private boolean isPublicEndpoint(String requestURI, String method) {
         return method.equalsIgnoreCase("GET") &&
-                (requestURI.matches("/v3/boards/[A-Za-z0-9]+") ||
-                        requestURI.matches("/v3/boards/[A-Za-z0-9]+/collabs") ||
-                        requestURI.matches("/v3/boards/[A-Za-z0-9]+/collabs/[A-Za-z0-9]+") ||
-                        requestURI.matches("/v3/boards/[A-Za-z0-9]+/statuses(/\\d+)?") ||
-                        requestURI.matches("/v3/boards/[A-Za-z0-9]+/tasks(/\\d+)?"));
+                (requestURI.matches("/v3/boards/[A-Za-z0-9_]+") ||
+                        requestURI.matches("/v3/boards/[A-Za-z0-9_]+/collabs") ||
+                        requestURI.matches("/v3/boards/[A-Za-z0-9_]+/collabs/[A-Za-z0-9_]+") ||
+                        requestURI.matches("/v3/boards/[A-Za-z0-9_]+/statuses(/\\d+)?") ||
+                        requestURI.matches("/v3/boards/[A-Za-z0-9_]+/tasks(/\\d+)?"));
     }
 
     private void handleException(JwtErrorType type, HttpServletResponse response, String message, HttpStatus status, String instance)
@@ -134,7 +176,7 @@ public class    JwtAuthFilter extends OncePerRequestFilter {
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         String jsonResponse = String.format("{\"type\": \"%s\", \"status\": %d, \"message\": \"%s\", \"instance\": \"uri=%s\"}",
-               type.name() ,status.value(), message, instance);
+                type.name() ,status.value(), message, instance);
         response.getWriter().write(jsonResponse);
     }
 }

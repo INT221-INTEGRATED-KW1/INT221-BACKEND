@@ -1,7 +1,11 @@
 package sit.int221.integratedproject.kanbanborad.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Jwts;
 import jakarta.validation.Valid;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -34,7 +38,9 @@ import sit.int221.integratedproject.kanbanborad.services.StatusService;
 import sit.int221.integratedproject.kanbanborad.services.TaskService;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
+import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -73,8 +79,13 @@ public class TaskController {
         if (isPublicBoard(board)) {
             return ResponseEntity.ok(tasks);
         }
+        Claims claims;
 
-        Claims claims = validateToken(token);
+        if (isMicrosoftToken(token)) {
+            claims = validateMicrosoftTokenAndAuthorization(token, id);
+        } else {
+            claims = validateToken(token);
+        }
 
         validateOwnership(claims, id);
 
@@ -102,8 +113,13 @@ public class TaskController {
         if (isPublicBoard(board)) {
             return ResponseEntity.ok(taskService.findTaskById(null, id, taskId));
         }
+        Claims claims;
 
-        Claims claims = validateToken(token);
+        if (isMicrosoftToken(token)) {
+            claims = validateMicrosoftTokenAndAuthorization(token, id);
+        } else {
+            claims = validateToken(token);
+        }
 
         validateOwnership(claims, id);
 
@@ -266,7 +282,13 @@ public class TaskController {
 
     private Board validateBoardAndOwnership(String boardId, String token) {
         Board board = getBoardOrThrow(boardId);
-        Claims claims = validateTokenAndOwnership(token, boardId);
+        Claims claims;
+
+        if (isMicrosoftToken(token)) {
+            claims = validateMicrosoftTokenForModify(token, boardId);
+        } else {
+            claims = validateTokenAndOwnership(token, boardId);
+        }
         return board;
     }
 
@@ -283,6 +305,85 @@ public class TaskController {
         }
 
         return false;
+    }
+
+    private Claims validateMicrosoftTokenForModify(String token, String boardId) {
+        if (token == null || !token.startsWith("Bearer ")) {
+            throw new ForbiddenException("Authentication required to access this board.");
+        }
+
+        String jwtToken = token.substring(7);
+        Claims claims;
+        try {
+            claims = extractClaimsFromMicrosoftToken(jwtToken);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Microsoft Token");
+        }
+
+        String oid = claims.get("oid", String.class);
+
+        if (!isOwner(oid, boardId) && !hasWriteAccess(oid, boardId)) {
+            throw new ForbiddenException("You are not allowed to modify this board.");
+        }
+
+        return claims;
+    }
+
+    private Claims extractClaimsFromMicrosoftToken(String token) {
+        try {
+            if (token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+            SignedJWT signedJWT = SignedJWT.parse(token);
+            JWTClaimsSet claimsSet = signedJWT.getJWTClaimsSet();
+
+            Claims claims = Jwts.claims();
+            claims.put("oid", claimsSet.getStringClaim("oid"));
+            claims.put("name", claimsSet.getStringClaim("name"));
+            claims.put("preferred_username", claimsSet.getStringClaim("preferred_username"));
+
+            return claims;
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Microsoft Token");
+        }
+    }
+
+    private boolean isMicrosoftToken(String token) {
+        String issuer = getIssuer(token);
+        return issuer != null && issuer.contains("microsoft");
+    }
+
+    private Claims validateMicrosoftTokenAndAuthorization(String token, String boardId) {
+        Claims claims = extractClaimsFromMicrosoftToken(token);
+
+        String oid = claims.get("oid", String.class);
+
+        if (!isOwner(oid, boardId) && !isCollaborator(oid, boardId)) {
+            throw new ForbiddenException("You are not allowed to access this board.");
+        }
+
+        Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
+        if (collaborator.isPresent() && collaborator.get().getStatus() == CollabStatus.PENDING) {
+            throw new ForbiddenException("You cannot access this board because your invitation is pending.");
+        }
+
+        return claims;
+    }
+
+    private String getIssuer(String token) {
+        try {
+            String[] parts = token.split("\\.");
+            if (parts.length != 3) {
+                return null;
+            }
+            String payload = new String(Base64.getUrlDecoder().decode(parts[1]));
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> claims = mapper.readValue(payload, Map.class);
+            return (String) claims.get("iss");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null; // เกิดข้อผิดพลาด
+        }
     }
 
 }
