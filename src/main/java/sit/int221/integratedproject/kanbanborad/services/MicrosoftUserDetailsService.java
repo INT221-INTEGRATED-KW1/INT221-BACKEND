@@ -23,7 +23,6 @@ public class MicrosoftUserDetailsService {
     public UserDetails loadUserByOid(String oid) throws UsernameNotFoundException {
         UserOwn userOwn = userOwnRepository.findById(oid)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Microsoft user with OID " + oid + " does not exist !!"));
-        System.out.println(userOwn);
         return getUserDetails(userOwn);
     }
 

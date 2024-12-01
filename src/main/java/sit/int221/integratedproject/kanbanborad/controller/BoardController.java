@@ -388,7 +388,7 @@ public class BoardController {
             return (String) claims.get("iss");
         } catch (Exception e) {
             e.printStackTrace();
-            return null; // เกิดข้อผิดพลาด
+            return null;
         }
     }
 
