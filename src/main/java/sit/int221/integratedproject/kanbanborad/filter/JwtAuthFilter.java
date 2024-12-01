@@ -55,7 +55,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String requestURI = request.getRequestURI();
         String method = request.getMethod();
 
-        if (requestURI.equals("/login") || requestURI.equals("/token")) {
+        if (requestURI.equals("/login") || requestURI.equals("/token") || requestURI.equals("/login/microsoft")) {
             chain.doFilter(request, response);
             return;
         }

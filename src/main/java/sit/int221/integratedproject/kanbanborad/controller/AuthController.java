@@ -11,7 +11,9 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import sit.int221.integratedproject.kanbanborad.dtos.request.JwtRequestUser;
+import sit.int221.integratedproject.kanbanborad.dtos.request.MicrosoftTokenRequest;
 import sit.int221.integratedproject.kanbanborad.dtos.response.LoginResponseDTO;
+import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.UserOwn;
 import sit.int221.integratedproject.kanbanborad.exceptions.GeneralException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;
@@ -45,6 +47,16 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
         } catch (UsernameNotFoundException e) {
             throw new UsernameNotFoundException("Username or Password is incorrect");
+        } catch (GeneralException e) {
+            throw new GeneralException("There is a problem. Please try again later.");
+        }
+    }
+
+    @PostMapping("/login/microsoft")
+    public ResponseEntity<Object> loginWithMicrosoft(@RequestBody MicrosoftTokenRequest microsoftTokenRequest) {
+        try {
+            UserOwn user = authService.loginWithMicrosoft(microsoftTokenRequest);
+            return ResponseEntity.status(HttpStatus.OK).body(user);
         } catch (GeneralException e) {
             throw new GeneralException("There is a problem. Please try again later.");
         }

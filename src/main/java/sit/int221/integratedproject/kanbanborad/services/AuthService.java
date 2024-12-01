@@ -1,6 +1,7 @@
 
 package sit.int221.integratedproject.kanbanborad.services;
 
+import com.nimbusds.jose.jwk.*;
 import io.jsonwebtoken.Claims;
 import jakarta.transaction.Transactional;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -10,18 +11,28 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import sit.int221.integratedproject.kanbanborad.dtos.request.JwtRequestUser;
+import sit.int221.integratedproject.kanbanborad.dtos.request.MicrosoftTokenRequest;
 import sit.int221.integratedproject.kanbanborad.dtos.response.AuthenticateUser;
 import sit.int221.integratedproject.kanbanborad.dtos.response.LoginResponseDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.response.MicrosoftTokenPayload;
 import sit.int221.integratedproject.kanbanborad.dtos.response.RefreshTokenResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
-import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.RefreshToken;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.UserOwn;
 import sit.int221.integratedproject.kanbanborad.exceptions.GeneralException;
-import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
 import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.RefreshTokenRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.UserOwnRepository;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
+
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSVerifier;
+import com.nimbusds.jose.crypto.RSASSAVerifier;
+import com.nimbusds.jwt.SignedJWT;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.jwk.source.RemoteJWKSet;
+
+import java.net.URL;
+import java.security.interfaces.RSAPublicKey;
 
 @Service
 public class AuthService {
@@ -70,6 +81,24 @@ public class AuthService {
         }
     }
 
+    @Transactional
+    public UserOwn loginWithMicrosoft(MicrosoftTokenRequest microsoftTokenRequest) {
+        try {
+            MicrosoftTokenPayload payload = validateAndParseToken(microsoftTokenRequest.getToken());
+
+            UserOwn user = userOwnRepository.findByOid(payload.getOid())
+                    .orElse(new UserOwn());
+            user.setOid(payload.getOid());
+            user.setName(Utils.trimString(payload.getName()));
+            user.setUsername(Utils.trimString(payload.getPreferredUsername()));
+            user.setEmail(payload.getEmail());
+
+            return userOwnRepository.save(user);
+        } catch (Exception e) {
+            throw new GeneralException("Unable to process Microsoft token.");
+        }
+    }
+
     public RefreshTokenResponseDTO refreshAccessToken(Claims claims) {
         String oid = claims.get("oid", String.class);
 
@@ -80,6 +109,42 @@ public class AuthService {
         String newAccessToken = jwtTokenUtil.generateToken(authentication);
 
         return new RefreshTokenResponseDTO(newAccessToken);
+    }
+
+    public MicrosoftTokenPayload validateAndParseToken(String token) {
+        try {
+            URL jwksURL = new URL("https://login.microsoftonline.com/common/discovery/v2.0/keys");
+            JWKSource keySource = new RemoteJWKSet<>(jwksURL);
+
+            SignedJWT signedJWT = SignedJWT.parse(token);
+
+            String keyID = signedJWT.getHeader().getKeyID();
+            JWK jwk = (JWK) keySource.get(new JWKSelector(new JWKMatcher.Builder().keyID(keyID).build()), null)
+                    .stream()
+                    .findFirst()
+                    .orElseThrow(() -> new GeneralException("Unable to find matching JWK"));
+
+            if (!jwk.getKeyType().equals(KeyType.RSA)) {
+                throw new GeneralException("Unexpected key type");
+            }
+
+            JWSVerifier verifier = new RSASSAVerifier((RSAPublicKey) jwk.toRSAKey().toPublicKey());
+            if (!signedJWT.verify(verifier)) {
+                throw new GeneralException("Invalid signature");
+            }
+
+            MicrosoftTokenPayload payload = new MicrosoftTokenPayload();
+            payload.setOid(signedJWT.getJWTClaimsSet().getStringClaim("oid"));
+            payload.setName(signedJWT.getJWTClaimsSet().getStringClaim("name"));
+            payload.setPreferredUsername(signedJWT.getJWTClaimsSet().getStringClaim("preferred_username"));
+            payload.setEmail(signedJWT.getJWTClaimsSet().getStringClaim("preferred_username"));
+
+            return payload;
+        } catch (Exception e) {
+            throw new GeneralException("Invalid Microsoft token: " + e.getMessage());
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }
