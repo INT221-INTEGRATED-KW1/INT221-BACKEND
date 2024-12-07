@@ -20,6 +20,7 @@ import sit.int221.integratedproject.kanbanborad.dtos.request.TaskUpdateRequestDT
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskAddEditResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskDetailResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseWithAttachmentsDTO;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Attachment;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Collaborator;
@@ -140,7 +141,7 @@ public class TaskController {
     }
 
     @PutMapping("/{id}/tasks/{taskId}")
-    public ResponseEntity<TaskAddEditResponseDTO> updateTask(
+    public ResponseEntity<TaskResponseWithAttachmentsDTO> updateTask(
             @PathVariable String id,
             @ModelAttribute @Valid TaskUpdateRequestDTO taskDTO,
             @PathVariable Integer taskId,
