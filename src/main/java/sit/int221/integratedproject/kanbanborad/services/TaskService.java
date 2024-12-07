@@ -8,10 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import sit.int221.integratedproject.kanbanborad.dtos.request.TaskRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.request.TaskUpdateRequestDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.response.AttachmentResponseDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.response.TaskAddEditResponseDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.response.TaskDetailResponseDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.response.*;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.*;
 import sit.int221.integratedproject.kanbanborad.enumeration.CollabStatus;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
@@ -84,16 +81,25 @@ public class TaskService {
         TaskDetailResponseDTO taskDetailResponseDTO = modelMapper.map(task, TaskDetailResponseDTO.class);
 
         List<AttachmentResponseDTO> attachmentDTOs = task.getAttachments().stream()
-                .map(attachment -> new AttachmentResponseDTO(
-                        attachment.getId(),
-                        attachment.getFilename(),
-                        attachment.getFilePath(),
-                        attachment.getFileSize(),
-                        attachment.getCreatedOn()
-                ))
+                .map(attachment -> {
+                    String originalFilename = attachment.getFilename();
+                    String trimmedFilename = originalFilename.replaceFirst("^" + boardId + "_" + taskId + "_", "");
+
+                    return new AttachmentResponseDTO(
+                            attachment.getId(),
+                            trimmedFilename, // ใช้ชื่อไฟล์ที่ถูกตัดแล้ว
+                            attachment.getFilePath(),
+                            attachment.getFileSize(),
+                            attachment.getCreatedOn()
+                    );
+                })
                 .collect(Collectors.toList());
 
         taskDetailResponseDTO.setAttachments(attachmentDTOs);
+
+        int currentAttachmentCount = attachmentRepository.countByTaskId(taskId);
+        taskDetailResponseDTO.setAttachmentCount(currentAttachmentCount);
+
         return taskDetailResponseDTO;
     }
 
@@ -112,7 +118,7 @@ public class TaskService {
     }
 
     @Transactional
-    public TaskAddEditResponseDTO updateTask(String id, TaskUpdateRequestDTO taskDTO, Integer taskId, List<MultipartFile> files) {
+    public TaskResponseWithAttachmentsDTO updateTask(String id, TaskUpdateRequestDTO taskDTO, Integer taskId, List<MultipartFile> files) {
         Board board = getBoardById(id);
         Task existingTask = getTaskById(taskId);
         Status status = getStatusById(taskDTO.getStatus());
@@ -134,7 +140,24 @@ public class TaskService {
         existingTask.setAttachmentCount(totalAttachmentsCount);
 
         Task updatedTask = taskRepository.save(existingTask);
-        return modelMapper.map(updatedTask, TaskAddEditResponseDTO.class);
+        TaskResponseWithAttachmentsDTO responseDTO = modelMapper.map(updatedTask, TaskResponseWithAttachmentsDTO.class);
+
+        List<AttachmentResponseDTO> modifiedAttachments = updatedTask.getAttachments().stream()
+                .map(attachment -> {
+                    String trimmedFilename = attachment.getFilename().replaceFirst("^" + id + "_" + taskId + "_", "");
+                    return new AttachmentResponseDTO(
+                            attachment.getId(),
+                            trimmedFilename,
+                            attachment.getFilePath(),
+                            attachment.getFileSize(),
+                            attachment.getCreatedOn()
+                    );
+                })
+                .collect(Collectors.toList());
+
+        responseDTO.setAttachments(modifiedAttachments); // เซ็ตค่า attachments
+
+        return responseDTO;
     }
 
     @Transactional

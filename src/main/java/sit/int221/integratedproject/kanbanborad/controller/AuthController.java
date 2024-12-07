@@ -1,3 +1,4 @@
+
 package sit.int221.integratedproject.kanbanborad.controller;
 
 import io.jsonwebtoken.Claims;
@@ -10,27 +11,33 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import sit.int221.integratedproject.kanbanborad.dtos.request.JwtRequestUser;
+import sit.int221.integratedproject.kanbanborad.dtos.request.MicrosoftTokenRequest;
 import sit.int221.integratedproject.kanbanborad.dtos.response.LoginResponseDTO;
+import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.UserOwn;
 import sit.int221.integratedproject.kanbanborad.exceptions.GeneralException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
+import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.RefreshTokenRepository;
 import sit.int221.integratedproject.kanbanborad.services.AuthService;
 import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
 
+import java.util.Map;
+
 @RestController
-@CrossOrigin(origins = {"http://ip23kw1.sit.kmutt.ac.th", "http://intproj23.sit.kmutt.ac.th",
-        "https://ip23kw1.sit.kmutt.ac.th", "https://intproj23.sit.kmutt.ac.th"})
+@CrossOrigin(origins = "http://localhost")
 public class AuthController {
     private final JwtTokenUtil jwtTokenUtil;
     private final AuthenticationManager authenticationManager;
     private final RefreshTokenRepository refreshTokenRepository;
     private final AuthService authService;
+    private final UserRepository userRepository;
 
-    public AuthController(JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager, RefreshTokenRepository refreshTokenRepository, AuthService authService) {
+    public AuthController(JwtTokenUtil jwtTokenUtil, AuthenticationManager authenticationManager, RefreshTokenRepository refreshTokenRepository, AuthService authService, UserRepository userRepository) {
         this.jwtTokenUtil = jwtTokenUtil;
         this.authenticationManager = authenticationManager;
         this.refreshTokenRepository = refreshTokenRepository;
         this.authService = authService;
+        this.userRepository = userRepository;
     }
 
     @PostMapping("/login")
@@ -40,6 +47,16 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
         } catch (UsernameNotFoundException e) {
             throw new UsernameNotFoundException("Username or Password is incorrect");
+        } catch (GeneralException e) {
+            throw new GeneralException("There is a problem. Please try again later.");
+        }
+    }
+
+    @PostMapping("/login/microsoft")
+    public ResponseEntity<Object> loginWithMicrosoft(@RequestBody MicrosoftTokenRequest microsoftTokenRequest) {
+        try {
+            UserOwn user = authService.loginWithMicrosoft(microsoftTokenRequest);
+            return ResponseEntity.status(HttpStatus.OK).body(user);
         } catch (GeneralException e) {
             throw new GeneralException("There is a problem. Please try again later.");
         }
@@ -57,11 +74,6 @@ public class AuthController {
             try {
                 if (!jwtTokenUtil.validateRefreshToken(jwtToken)) {
                     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired refresh token");
-                }
-                var refreshToken = refreshTokenRepository.findRefreshTokenByToken(jwtToken);
-
-                if (refreshToken == null) {
-                    throw new ItemNotFoundException("Refresh token not found");
                 }
 
                 claims = jwtTokenUtil.getAllClaimsFromToken(jwtToken);

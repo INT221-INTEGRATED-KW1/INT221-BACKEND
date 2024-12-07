@@ -1,16 +1,19 @@
 package sit.int221.integratedproject.kanbanborad.services;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
 import jakarta.persistence.EntityManager;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 import sit.int221.integratedproject.kanbanborad.dtos.request.BoardAccessRightRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.request.CollaboratorRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.request.CollaboratorStatusUpdateDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.response.BoardAccessRightResponseDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.response.CollabAddEditResponseDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.response.CollaboratorInvitationResponseDTO;
-import sit.int221.integratedproject.kanbanborad.dtos.response.CollaboratorResponseDTO;
+import sit.int221.integratedproject.kanbanborad.dtos.response.*;
 import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Collaborator;
@@ -27,11 +30,23 @@ import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.UserOwn
 import sit.int221.integratedproject.kanbanborad.utils.ListMapper;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
 public class CollaboratorService {
+    private static final String TENANT_ID = "79845616-9df0-43e0-8842-e300feb2642a";
+    private static final String CLIENT_ID = "c24bef80-9a21-4c60-95a8-92babebc1a5c";
+    private static final String CLIENT_SECRET = "HMe8Q~ufs-do2e_lgkhFx7ngEDx7-vnOmURK0cvW";
+    private static final String TOKEN_URL = "https://login.microsoftonline.com/%s/oauth2/v2.0/token";
     private final BoardRepository boardRepository;
     private final UserRepository userRepository;
     private final CollaboratorRepository collaboratorRepository;
@@ -55,7 +70,14 @@ public class CollaboratorService {
 
     @Transactional
     public CollabAddEditResponseDTO addNewCollaborator(String id, String token, CollaboratorRequestDTO collaboratorRequestDTO) {
-        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+        Claims claims;
+
+        if (isMicrosoftToken(token)) {
+            claims = extractClaimsFromMicrosoftToken(token);
+        } else {
+            claims = Utils.getClaims(token, jwtTokenUtil);
+        }
+
         String name = (String) claims.get("name");
 
         Board board = boardRepository.findById(id)
@@ -66,59 +88,73 @@ public class CollaboratorService {
         if (collaboratorRequestDTO == null) {
             throw new BadRequestException("Request body is required.");
         }
-
         if (collaboratorRequestDTO.getEmail() == null || collaboratorRequestDTO.getEmail().isBlank()) {
             throw new BadRequestException("Email is required.");
         }
         if (collaboratorRequestDTO.getAccessRight() == null || collaboratorRequestDTO.getAccessRight().isBlank()) {
             throw new BadRequestException("Access right is required.");
         }
-
         if (!List.of("READ", "WRITE").contains(collaboratorRequestDTO.getAccessRight().toUpperCase())) {
             throw new BadRequestException("Invalid access right. Must be 'READ' or 'WRITE'.");
         }
 
-        User newCollaborator = userRepository.findByEmail(collaboratorRequestDTO.getEmail())
-                .orElseThrow(() -> new ItemNotFoundException("User with email " + collaboratorRequestDTO.getEmail() + " not found in shared database."));
+        String email = collaboratorRequestDTO.getEmail();
+        if (!email.endsWith("@ad.sit.kmutt.ac.th")) {
+            throw new BadRequestException("Only emails from 'ad.sit.kmutt.ac.th' domain are supported.");
+        }
 
-        if (board.getOid().equals(newCollaborator.getOid())) {
+        Optional<User> msEntraUser = findUserInMicrosoftEntra(email, token);
+        User collaboratorUser = msEntraUser.orElseGet(() -> {
+            return userRepository.findByEmail(email)
+                    .orElseThrow(() -> new ItemNotFoundException("User with email " + email + " not found in MS Entra or shared database."));
+        });
+
+        if (board.getOid().equals(collaboratorUser.getOid())) {
             throw new ConflictException("The email belongs to the board owner.");
         }
 
-        Optional<Collaborator> existingCollaborator = collaboratorRepository.findByBoardAndEmail(board, newCollaborator.getEmail());
+        Optional<Collaborator> existingCollaborator = collaboratorRepository.findByBoardAndEmail(board, collaboratorUser.getEmail());
         if (existingCollaborator.isPresent()) {
             throw new ConflictException("This email already belongs to an existing collaborator or pending collaborator.");
         }
 
-        Optional<UserOwn> existingUserOwn = userOwnRepository.findByOid(newCollaborator.getOid());
+
+        Optional<UserOwn> existingUserOwn = userOwnRepository.findByOid(collaboratorUser.getOid());
         if (existingUserOwn.isEmpty()) {
             UserOwn userOwn = new UserOwn();
-            userOwn.setOid(newCollaborator.getOid());
-            userOwn.setName(newCollaborator.getName());
-            userOwn.setUsername(newCollaborator.getUsername());
-            userOwn.setEmail(newCollaborator.getEmail());
+            userOwn.setOid(collaboratorUser.getOid());
+            userOwn.setName(collaboratorUser.getName());
+            userOwn.setUsername(collaboratorUser.getUsername());
+            userOwn.setEmail(collaboratorUser.getEmail());
             userOwnRepository.save(userOwn);
         }
 
         Collaborator collaborator = new Collaborator();
         collaborator.setBoard(board);
-        collaborator.setOid(newCollaborator.getOid());
-        collaborator.setName(newCollaborator.getName());
-        collaborator.setEmail(newCollaborator.getEmail());
+        collaborator.setOid(collaboratorUser.getOid());
+        collaborator.setName(collaboratorUser.getName());
+        collaborator.setEmail(collaboratorUser.getEmail());
         collaborator.setAccessRight(collaboratorRequestDTO.getAccessRight());
         collaborator.setStatus(CollabStatus.PENDING);
 
         Collaborator savedCollaborator = collaboratorRepository.save(collaborator);
         entityManager.refresh(savedCollaborator);
 
-        sendEmailToCollaborator(newCollaborator, name, collaboratorRequestDTO.getAccessRight(), board);
+        sendEmailToCollaborator(collaboratorUser, name, collaboratorRequestDTO.getAccessRight(), board);
 
         return convertToCollabAddEditResponseDTO(board, savedCollaborator);
     }
 
     @Transactional
     public BoardAccessRightResponseDTO updateBoardAccessRight(String id, String collabOid, String token, BoardAccessRightRequestDTO boardAccessRightRequestDTO) {
-        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+        Claims claims;
+
+        if (isMicrosoftToken(token)) {
+            claims = extractClaimsFromMicrosoftToken(token);
+        } else {
+            claims = Utils.getClaims(token, jwtTokenUtil);
+        }
+
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Board ID " + id + " not found."));
 
@@ -153,7 +189,13 @@ public class CollaboratorService {
 
     @Transactional
     public CollaboratorResponseDTO deleteBoardCollaborator(String id, String collabOid, String token) {
-        Claims claims = Utils.getClaims(token, jwtTokenUtil);
+        Claims claims;
+
+        if (isMicrosoftToken(token)) {
+            claims = extractClaimsFromMicrosoftToken(token);
+        } else {
+            claims = Utils.getClaims(token, jwtTokenUtil);
+        }
 
         String oid = claims.get("oid", String.class);
 
@@ -349,6 +391,135 @@ public class CollaboratorService {
         BoardAccessRightResponseDTO responseDTO = new BoardAccessRightResponseDTO();
         responseDTO.setAccessRight(collaborator.getAccessRight());
         return responseDTO;
+    }
+
+    private boolean isMicrosoftToken(String token) {
+        String issuer = getIssuer(token);
+        return issuer != null && issuer.contains("microsoft");
+    }
+
+    private String getIssuer(String token) {
+        try {
+            String[] parts = token.split("\\.");
+            if (parts.length != 3) {
+                return null;
+            }
+            String payload = new String(Base64.getUrlDecoder().decode(parts[1]));
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> claims = mapper.readValue(payload, Map.class);
+            return (String) claims.get("iss");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null; // เกิดข้อผิดพลาด
+        }
+    }
+
+    private Claims extractClaimsFromMicrosoftToken(String token) {
+        try {
+            if (token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+
+            SignedJWT signedJWT = SignedJWT.parse(token);
+            JWTClaimsSet claimsSet = signedJWT.getJWTClaimsSet();
+
+            Claims claims = Jwts.claims();
+            claims.put("oid", claimsSet.getStringClaim("oid"));
+            claims.put("name", claimsSet.getStringClaim("name"));
+            claims.put("preferred_username", claimsSet.getStringClaim("preferred_username"));
+
+            return claims;
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Microsoft Token");
+        }
+    }
+
+    private Optional<User> findUserInMicrosoftEntra(String email, String userToken) {
+        try {
+            System.out.println("userToken : " + userToken);
+            String encodedEmail = URLEncoder.encode("mail eq '" + email + "'", StandardCharsets.UTF_8);
+
+            String accessToken = getMicrosoftGraphToken(userToken);
+            System.out.println("accessToken : " + accessToken);
+            if (accessToken == null) {
+                throw new RuntimeException("Failed to retrieve Microsoft Graph Token.");
+            }
+
+            String responseBody = fetchMicrosoftGraphUser(accessToken, encodedEmail);
+            if (responseBody == null) {
+                return Optional.empty();
+            }
+
+            MicrosoftGraphUserResponse graphResponse = new ObjectMapper().readValue(responseBody, MicrosoftGraphUserResponse.class);
+            if (!graphResponse.getValue().isEmpty()) {
+                MicrosoftGraphUser graphUser = graphResponse.getValue().get(0);
+                User user = new User();
+                user.setOid(graphUser.getId());
+                user.setName(graphUser.getDisplayName());
+                user.setEmail(graphUser.getMail());
+                user.setUsername(graphUser.getUserPrincipalName());
+                return Optional.of(user);
+            }
+        } catch (Exception e) {
+            System.err.println("Error finding user in Microsoft Entra: " + e.getMessage());
+        }
+        return Optional.empty();
+    }
+
+    private String getMicrosoftGraphToken(String userToken) {
+        try {
+            if (userToken.startsWith("Bearer ")) {
+                userToken = userToken.substring(7);
+            }
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(String.format(TOKEN_URL, TENANT_ID)))
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .POST(HttpRequest.BodyPublishers.ofString(
+                            "client_id=" + CLIENT_ID +
+                                    "&scope=https://graph.microsoft.com/.default" +
+                                    "&client_secret=" + CLIENT_SECRET +
+                                    "&grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer" +
+                                    "&assertion=" + userToken +
+                                    "&requested_token_use=on_behalf_of"))
+                    .build();
+
+            HttpResponse<String> response = HttpClient.newHttpClient()
+                    .send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                Map<String, Object> tokenResponse = new ObjectMapper().readValue(response.body(), Map.class);
+                return (String) tokenResponse.get("access_token");
+            } else {
+                System.err.println("Failed to fetch token. Status: " + response.statusCode() + ", Body: " + response.body());
+            }
+        } catch (Exception e) {
+            System.err.println("Error fetching Microsoft Graph token: " + e.getMessage());
+        }
+        return null;
+    }
+
+    private String fetchMicrosoftGraphUser(String accessToken, String encodedEmail) {
+        try {
+            String graphEndpoint = "https://graph.microsoft.com/v1.0/users?$filter=" + encodedEmail;
+
+            HttpRequest request = HttpRequest.newBuilder(URI.create(graphEndpoint))
+                    .header("Authorization", "Bearer " + accessToken)
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = HttpClient.newHttpClient()
+                    .send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                return response.body();
+            } else {
+                System.err.println("Failed to fetch user. Status: " + response.statusCode() + ", Body: " + response.body());
+            }
+        } catch (Exception e) {
+            System.err.println("Error fetching user from MS Graph API: " + e.getMessage());
+        }
+        return null;
     }
 
 }

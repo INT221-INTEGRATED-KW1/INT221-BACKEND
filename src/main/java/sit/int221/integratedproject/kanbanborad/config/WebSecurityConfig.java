@@ -6,7 +6,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
@@ -33,7 +32,7 @@ public class WebSecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity.csrf(csrf -> csrf.disable())
                 .authorizeRequests(authorize -> authorize
-                        .requestMatchers("/login", "/token", "/v3/boards/*", "/v3/boards/*/collabs","/v3/boards/*/collabs/*" ,"/v3/boards/*/tasks", "/v3/boards/*/statuses",
+                        .requestMatchers("/login","/login/microsoft" ,"/token", "/v3/boards/*", "/v3/boards/*/collabs","/v3/boards/*/collabs/*" ,"/v3/boards/*/tasks", "/v3/boards/*/statuses",
                                 "/v3/boards/*/tasks/*", "/v3/boards/*/statuses/*", "/v3/boards/*/maximum-status").permitAll()  // อนุญาต GET tasks, statuses สำหรับทุกคน
                         .anyRequest().authenticated())
                 .httpBasic(withDefaults());
