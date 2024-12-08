@@ -134,7 +134,7 @@ public class BoardService {
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
 
-        User user = userRepository.findById(board.getOid())
+        UserOwn user = userOwnRepository.findById(board.getOid())
                 .orElseThrow(() -> new ItemNotFoundException("User Id " + board.getOid() + " DOES NOT EXIST !!!"));
 
         return getBoardResponseDTO(user, board);
@@ -146,7 +146,7 @@ public class BoardService {
 
         validateOwnership(claims, id);
 
-        User user = userRepository.findById(board.getOid())
+        UserOwn user = userOwnRepository.findById(board.getOid())
                 .orElseThrow(() -> new ItemNotFoundException("User Id " + board.getOid() + " DOES NOT EXIST !!!"));
 
         return getBoardResponseDTO(user, board);
@@ -154,7 +154,7 @@ public class BoardService {
 
     public BoardResponseDTO createBoard(Claims claims, BoardRequestDTO boardRequestDTO) {
         String oid = (String) claims.get("oid");
-        User user = userRepository.findById(oid)
+        UserOwn user = userOwnRepository.findById(oid)
                 .orElseThrow(() -> new ItemNotFoundException("User Id " + oid + " DOES NOT EXIST !!!"));
 
         Board board = new Board();
@@ -180,7 +180,7 @@ public class BoardService {
         statusRepository.saveAll(defaultStatuses);
     }
 
-    private BoardResponseDTO getBoardResponseDTO(User user, Board savedBoard) {
+    private BoardResponseDTO getBoardResponseDTO(UserOwn user, Board savedBoard) {
         OwnerResponseDTO ownerResponseDTO = new OwnerResponseDTO();
         ownerResponseDTO.setOid(user.getOid());
         ownerResponseDTO.setName(user.getName());
