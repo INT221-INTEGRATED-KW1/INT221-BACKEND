@@ -81,7 +81,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         UserDetails microsoftUserDetails = microsoftUserDetailsService.loadUserByOid(oid);
                         UsernamePasswordAuthenticationToken microsoftAuthToken =
                                 new UsernamePasswordAuthenticationToken(microsoftUserDetails, null, microsoftUserDetails.getAuthorities());
-                        System.out.println(microsoftAuthToken);
                         microsoftAuthToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                         SecurityContextHolder.getContext().setAuthentication(microsoftAuthToken);
                     }
@@ -89,7 +88,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         UserDetails userDetails = jwtUserDetailsService.loadUserByOid(oid);
                         UsernamePasswordAuthenticationToken authToken =
                                 new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                        System.out.println(authToken);
                         authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                         SecurityContextHolder.getContext().setAuthentication(authToken);
                     }
