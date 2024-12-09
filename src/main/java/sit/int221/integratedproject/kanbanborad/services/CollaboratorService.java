@@ -118,7 +118,6 @@ public class CollaboratorService {
             throw new ConflictException("This email already belongs to an existing collaborator or pending collaborator.");
         }
 
-
         Optional<UserOwn> existingUserOwn = userOwnRepository.findByOid(collaboratorUser.getOid());
         if (existingUserOwn.isEmpty()) {
             UserOwn userOwn = new UserOwn();
@@ -172,7 +171,7 @@ public class CollaboratorService {
             throw new BadRequestException("Invalid access right. Must be 'READ' or 'WRITE'.");
         }
 
-        User newCollaborator = userRepository.findByOid(collabOid)
+        UserOwn newCollaborator = userOwnRepository.findByOid(collabOid)
                 .orElseThrow(() -> new ItemNotFoundException("User with oid " + collabOid + " not found in shared database."));
 
         Collaborator existingCollaborator = collaboratorRepository.findByBoardAndOid(board, collabOid);
@@ -319,7 +318,7 @@ public class CollaboratorService {
         Collaborator collaborator = collaboratorRepository.findByOidAndBoardIdAndStatus(userId, boardId, CollabStatus.PENDING)
                 .orElseThrow(() -> new ItemNotFoundException("No active invitation found for this user on the specified board."));
 
-        User inviter = userRepository.findById(collaborator.getBoard().getOid())
+        UserOwn inviter = userOwnRepository.findById(collaborator.getBoard().getOid())
                 .orElseThrow(() -> new ItemNotFoundException("Inviter not found."));
 
         Board board = boardRepository.findById(boardId)
