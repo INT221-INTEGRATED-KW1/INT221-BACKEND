@@ -75,7 +75,7 @@ public class BoardService {
     }
 
     public BoardsResponseDTO getAllBoards(Claims claims) {
-        String oid = (String) claims.get("oid");
+        String oid = JwtTokenUtil.getOidFromClaims(claims);
 
         UserOwn user = userOwnRepository.findById(oid)
                 .orElseThrow(() -> new ItemNotFoundException("User Id " + oid + " DOES NOT EXIST !!!"));
@@ -145,7 +145,7 @@ public class BoardService {
     }
 
     public BoardResponseDTO createBoard(Claims claims, BoardRequestDTO boardRequestDTO) {
-        String oid = (String) claims.get("oid");
+        String oid = JwtTokenUtil.getOidFromClaims(claims);
         UserOwn user = userOwnRepository.findById(oid)
                 .orElseThrow(() -> new ItemNotFoundException("User Id " + oid + " DOES NOT EXIST !!!"));
 
@@ -271,7 +271,7 @@ public class BoardService {
     }
 
     private void validateOwnership(Claims claims, String boardId) {
-        String oid = (String) claims.get("oid");
+        String oid = JwtTokenUtil.getOidFromClaims(claims);
 
         if (isOwner(oid, boardId)) {
             return;
@@ -297,7 +297,7 @@ public class BoardService {
 
     public Board validateBoardAndOwnership(String boardId, Claims claims) {
         Board board = getBoardOrThrow(boardId);
-        String oid = (String) claims.get("oid");
+        String oid = JwtTokenUtil.getOidFromClaims(claims);
 
         if (!isOwner(oid, boardId)) {
             throw new ForbiddenException("You are not allowed to access this board.");

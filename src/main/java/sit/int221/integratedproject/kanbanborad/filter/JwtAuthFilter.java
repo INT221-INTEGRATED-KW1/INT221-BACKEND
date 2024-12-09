@@ -18,11 +18,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.server.ResponseStatusException;
 import sit.int221.integratedproject.kanbanborad.enumeration.JwtErrorType;
 import sit.int221.integratedproject.kanbanborad.exceptions.TokenIsMissingException;
 import sit.int221.integratedproject.kanbanborad.exceptions.TokenNotWellException;
-import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
 import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
 import sit.int221.integratedproject.kanbanborad.services.JwtUserDetailsService;
 import sit.int221.integratedproject.kanbanborad.services.MicrosoftUserDetailsService;
@@ -35,13 +33,11 @@ import java.util.Map;
 public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtUserDetailsService jwtUserDetailsService;
     private final JwtTokenUtil jwtTokenUtil;
-    private final BoardRepository boardRepository;
     private final MicrosoftUserDetailsService microsoftUserDetailsService;
 
-    public JwtAuthFilter(JwtUserDetailsService jwtUserDetailsService, JwtTokenUtil jwtTokenUtil, BoardRepository boardRepository, MicrosoftUserDetailsService microsoftUserDetailsService) {
+    public JwtAuthFilter(JwtUserDetailsService jwtUserDetailsService, JwtTokenUtil jwtTokenUtil, MicrosoftUserDetailsService microsoftUserDetailsService) {
         this.jwtUserDetailsService = jwtUserDetailsService;
         this.jwtTokenUtil = jwtTokenUtil;
-        this.boardRepository = boardRepository;
         this.microsoftUserDetailsService = microsoftUserDetailsService;
     }
 

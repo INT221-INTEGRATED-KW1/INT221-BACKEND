@@ -4,6 +4,7 @@ package sit.int221.integratedproject.kanbanborad.services;
 import com.nimbusds.jose.jwk.*;
 import io.jsonwebtoken.Claims;
 import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -34,6 +35,8 @@ import java.security.interfaces.RSAPublicKey;
 
 @Service
 public class AuthService {
+    @Value("${auth.jwk-uri}")
+    private static String AUTH_JWK_URL;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenUtil jwtTokenUtil;
     private final UserRepository userRepository;
@@ -109,7 +112,7 @@ public class AuthService {
 
     public MicrosoftTokenPayload validateAndParseToken(String token) {
         try {
-            URL jwksURL = new URL("https://login.microsoftonline.com/common/discovery/v2.0/keys");
+            URL jwksURL = new URL(AUTH_JWK_URL);
             JWKSource keySource = new RemoteJWKSet<>(jwksURL);
 
             SignedJWT signedJWT = SignedJWT.parse(token);

@@ -25,8 +25,6 @@ import sit.int221.integratedproject.kanbanborad.utils.Utils;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static sit.int221.integratedproject.kanbanborad.utils.Utils.extractClaimsFromMicrosoftToken;
-import static sit.int221.integratedproject.kanbanborad.utils.Utils.isMicrosoftToken;
 
 @Service
 public class TaskService {
@@ -373,7 +371,7 @@ public class TaskService {
         Board board = getBoardOrThrow(boardId);
         Claims claims;
 
-        if (isMicrosoftToken(token)) {
+        if (Utils.isMicrosoftToken(token)) {
             claims = validateMicrosoftTokenForModify(token, boardId);
         } else {
             claims = validateTokenAndOwnership(token, boardId);
@@ -400,7 +398,7 @@ public class TaskService {
         String jwtToken = JwtTokenUtil.getJwtFromAuthorizationHeader(token);
         Claims claims;
         try {
-            claims = extractClaimsFromMicrosoftToken(jwtToken);
+            claims = Utils.extractClaimsFromMicrosoftToken(jwtToken);
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Microsoft Token");
         }
@@ -415,7 +413,7 @@ public class TaskService {
     }
 
     public Claims validateMicrosoftTokenAndAuthorization(String token, String boardId) {
-        Claims claims = extractClaimsFromMicrosoftToken(token);
+        Claims claims = Utils.extractClaimsFromMicrosoftToken(token);
 
         String oid = jwtTokenUtil.getOidFromToken(token);
 
