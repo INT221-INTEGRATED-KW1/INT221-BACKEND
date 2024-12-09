@@ -1,11 +1,6 @@
 package sit.int221.integratedproject.kanbanborad.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.Jwts;
 import jakarta.validation.Valid;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -14,58 +9,32 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 import sit.int221.integratedproject.kanbanborad.dtos.request.TaskRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.request.TaskUpdateRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskAddEditResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskDetailResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.TaskResponseWithAttachmentsDTO;
-import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Attachment;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
-import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Collaborator;
-import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Task;
-import sit.int221.integratedproject.kanbanborad.enumeration.CollabStatus;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
-import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
-import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
-import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.AttachmentRepository;
-import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
-import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.CollaboratorRepository;
-import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.TaskRepository;
-import sit.int221.integratedproject.kanbanborad.services.FileService;
-import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
-import sit.int221.integratedproject.kanbanborad.services.StatusService;
-import sit.int221.integratedproject.kanbanborad.services.TaskService;
-import sit.int221.integratedproject.kanbanborad.utils.Utils;
+import sit.int221.integratedproject.kanbanborad.services.*;
 
-import java.util.Base64;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+
+import static sit.int221.integratedproject.kanbanborad.utils.Utils.isMicrosoftToken;
 
 @RestController
 @RequestMapping("/v3/boards")
 @CrossOrigin(origins = "http://localhost")
 public class TaskController {
     private final TaskService taskService;
-    private final BoardRepository boardRepository;
-    private final StatusService statusService;
-    private final JwtTokenUtil jwtTokenUtil;
-    private final CollaboratorRepository collaboratorRepository;
     private final FileService fileService;
-    private final AttachmentRepository attachmentRepository;
-    private final TaskRepository taskRepository;
+    private final AttachmentService attachmentService;
 
-    public TaskController(TaskService taskService, BoardRepository boardRepository, StatusService statusService, JwtTokenUtil jwtTokenUtil, CollaboratorRepository collaboratorRepository, FileService fileService, AttachmentRepository attachmentRepository, TaskRepository taskRepository) {
+    public TaskController(TaskService taskService, FileService fileService, AttachmentService attachmentService) {
         this.taskService = taskService;
-        this.boardRepository = boardRepository;
-        this.statusService = statusService;
-        this.jwtTokenUtil = jwtTokenUtil;
-        this.collaboratorRepository = collaboratorRepository;
         this.fileService = fileService;
-        this.attachmentRepository = attachmentRepository;
-        this.taskRepository = taskRepository;
+        this.attachmentService = attachmentService;
     }
 
     @GetMapping("/{id}/tasks")
@@ -73,22 +42,22 @@ public class TaskController {
                                                             @RequestParam(required = false) String[] filterStatuses,
                                                             @PathVariable String id,
                                                             @RequestHeader(value = "Authorization", required = false) String token) {
-        Board board = getBoardOrThrow(id);
+        Board board = taskService.getBoardOrThrow(id);
 
         List<TaskResponseDTO> tasks = fetchTasksBasedOnParams(sortBy, filterStatuses, id);
 
-        if (isPublicBoard(board)) {
+        if (taskService.isPublicBoard(board)) {
             return ResponseEntity.ok(tasks);
         }
         Claims claims;
 
         if (isMicrosoftToken(token)) {
-            claims = validateMicrosoftTokenAndAuthorization(token, id);
+            claims = taskService.validateMicrosoftTokenAndAuthorization(token, id);
         } else {
-            claims = validateToken(token);
+            claims = taskService.validateToken(token);
         }
 
-        validateOwnership(claims, id);
+        taskService.validateOwnership(claims, id);
 
         return ResponseEntity.status(HttpStatus.OK).body(tasks);
     }
@@ -109,20 +78,20 @@ public class TaskController {
     public ResponseEntity<TaskDetailResponseDTO> getTaskById(@PathVariable String id,
                                                              @PathVariable Integer taskId,
                                                              @RequestHeader(value = "Authorization", required = false) String token) {
-        Board board = getBoardOrThrow(id);
+        Board board = taskService.getBoardOrThrow(id);
 
-        if (isPublicBoard(board)) {
+        if (taskService.isPublicBoard(board)) {
             return ResponseEntity.ok(taskService.findTaskById(null, id, taskId));
         }
         Claims claims;
 
         if (isMicrosoftToken(token)) {
-            claims = validateMicrosoftTokenAndAuthorization(token, id);
+            claims = taskService.validateMicrosoftTokenAndAuthorization(token, id);
         } else {
-            claims = validateToken(token);
+            claims = taskService.validateToken(token);
         }
 
-        validateOwnership(claims, id);
+        taskService.validateOwnership(claims, id);
 
         return ResponseEntity.status(HttpStatus.OK).body(taskService.findTaskById(claims, id, taskId));
     }
@@ -131,7 +100,7 @@ public class TaskController {
     public ResponseEntity<TaskAddEditResponseDTO> addNewTask(@RequestBody(required = false) @Valid TaskRequestDTO taskDTO,
                                                              @PathVariable String id,
                                                              @RequestHeader(value = "Authorization") String token) {
-        Board board = validateBoardAndOwnership(id, token);
+        Board board = taskService.validateBoardAndOwnership(id, token);
 
         if (taskDTO == null) {
             throw new BadRequestException("Missing required fields.");
@@ -147,7 +116,7 @@ public class TaskController {
             @PathVariable Integer taskId,
             @RequestHeader(value = "Authorization") String token,
             @RequestParam(value = "files", required = false) List<MultipartFile> files) {
-        Board board = validateBoardAndOwnership(id, token);
+        Board board = taskService.validateBoardAndOwnership(id, token);
 
         if (taskDTO == null) {
             throw new BadRequestException("Missing required fields.");
@@ -159,7 +128,7 @@ public class TaskController {
     @DeleteMapping("/{id}/tasks/{taskId}")
     public ResponseEntity<TaskResponseDTO> removeTask(@PathVariable String id, @PathVariable Integer taskId,
                                                       @RequestHeader(value = "Authorization") String token) {
-        Board board = validateBoardAndOwnership(id, token);
+        Board board = taskService.validateBoardAndOwnership(id, token);
 
         return ResponseEntity.status(HttpStatus.OK).body(taskService.deleteTask(id, taskId));
     }
@@ -200,191 +169,8 @@ public class TaskController {
     public ResponseEntity<String> deleteFile(@PathVariable String id, @PathVariable Integer taskId,
                                              @RequestParam String url) {
         String actualFileName = url.substring(url.lastIndexOf("/") + 1);
-        String dbFileName = id + "_" + taskId + "_" + actualFileName;
-
-        fileService.deleteFile(id, taskId, actualFileName);
-
-        Optional<Attachment> attachment = attachmentRepository.findByTaskIdAndFilename(taskId, dbFileName);
-        if (attachment.isPresent()) {
-            attachmentRepository.delete(attachment.get());
-
-            int updatedAttachmentCount = attachmentRepository.countByTaskId(taskId);
-
-            Task task = taskRepository.findById(taskId)
-                    .orElseThrow(() -> new ItemNotFoundException("Task not found for id: " + taskId));
-            task.setAttachmentCount(updatedAttachmentCount);
-            taskRepository.save(task);
-        } else {
-            throw new ItemNotFoundException("Attachment not found for file: " + dbFileName);
-        }
-
+        attachmentService.deleteAttachmentAndFile(id, taskId, actualFileName);
         return ResponseEntity.ok("delete file successfully");
-    }
-
-    @GetMapping("/test")
-    public ResponseEntity<Object> testPropertiesMapping() {
-        return ResponseEntity.ok(fileService.getFileStorageLocation() + " has been created !!!");
-    }
-
-    private Board getBoardOrThrow(String boardId) {
-        return boardRepository.findById(boardId)
-                .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
-    }
-
-    private Claims validateToken(String token) {
-        return Utils.getClaims(token, jwtTokenUtil);
-    }
-
-    private void validateOwnership(Claims claims, String boardId) {
-        String oid = (String) claims.get("oid");
-        if (!isOwner(oid, boardId) && !isCollaborator(oid, boardId)) {
-            throw new ForbiddenException("You are not allowed to access this board.");
-        }
-
-        Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
-        if (collaborator.isPresent() && collaborator.get().getStatus() == CollabStatus.PENDING) {
-            throw new ForbiddenException("You cannot access this board because your invitation is pending.");
-        }
-    }
-
-    private boolean isPublicBoard(Board board) {
-        return board.getVisibility().equalsIgnoreCase("PUBLIC");
-    }
-
-    private boolean isOwner(String oid, String boardId) {
-        Board board = boardRepository.findById(boardId)
-                .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
-        return board.getOid().equals(oid);
-    }
-
-    private Claims validateTokenAndOwnership(String token, String boardId) {
-        if (token == null || !token.startsWith("Bearer ")) {
-            throw new ForbiddenException("Authentication required to access this board.");
-        }
-
-        String jwtToken = token.substring(7);
-        Claims claims;
-        try {
-            claims = jwtTokenUtil.getAllClaimsFromToken(jwtToken);
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unable to get JWT Token");
-        } catch (ExpiredJwtException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "JWT Token has expired");
-        }
-
-        validateOwnership(claims, boardId);
-
-        if (!isOwner((String) claims.get("oid"), boardId) && !hasWriteAccess((String) claims.get("oid"), boardId)) {
-            throw new ForbiddenException("You are not allowed to modify this board.");
-        }
-
-        return claims;
-    }
-
-    private Board validateBoardAndOwnership(String boardId, String token) {
-        Board board = getBoardOrThrow(boardId);
-        Claims claims;
-
-        if (isMicrosoftToken(token)) {
-            claims = validateMicrosoftTokenForModify(token, boardId);
-        } else {
-            claims = validateTokenAndOwnership(token, boardId);
-        }
-        return board;
-    }
-
-    private boolean isCollaborator(String oid, String boardId) {
-        Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
-        return collaborator.isPresent();
-    }
-
-    private boolean hasWriteAccess(String oid, String boardId) {
-        Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
-
-        if (collaborator.isPresent()) {
-            return collaborator.get().getAccessRight().equalsIgnoreCase("WRITE");
-        }
-
-        return false;
-    }
-
-    private Claims validateMicrosoftTokenForModify(String token, String boardId) {
-        if (token == null || !token.startsWith("Bearer ")) {
-            throw new ForbiddenException("Authentication required to access this board.");
-        }
-
-        String jwtToken = token.substring(7);
-        Claims claims;
-        try {
-            claims = extractClaimsFromMicrosoftToken(jwtToken);
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Microsoft Token");
-        }
-
-        String oid = claims.get("oid", String.class);
-
-        if (!isOwner(oid, boardId) && !hasWriteAccess(oid, boardId)) {
-            throw new ForbiddenException("You are not allowed to modify this board.");
-        }
-
-        return claims;
-    }
-
-    private Claims extractClaimsFromMicrosoftToken(String token) {
-        try {
-            if (token.startsWith("Bearer ")) {
-                token = token.substring(7);
-            }
-            SignedJWT signedJWT = SignedJWT.parse(token);
-            JWTClaimsSet claimsSet = signedJWT.getJWTClaimsSet();
-
-            Claims claims = Jwts.claims();
-            claims.put("oid", claimsSet.getStringClaim("oid"));
-            claims.put("name", claimsSet.getStringClaim("name"));
-            claims.put("preferred_username", claimsSet.getStringClaim("preferred_username"));
-
-            return claims;
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Microsoft Token");
-        }
-    }
-
-    private boolean isMicrosoftToken(String token) {
-        String issuer = getIssuer(token);
-        return issuer != null && issuer.contains("microsoft");
-    }
-
-    private Claims validateMicrosoftTokenAndAuthorization(String token, String boardId) {
-        Claims claims = extractClaimsFromMicrosoftToken(token);
-
-        String oid = claims.get("oid", String.class);
-
-        if (!isOwner(oid, boardId) && !isCollaborator(oid, boardId)) {
-            throw new ForbiddenException("You are not allowed to access this board.");
-        }
-
-        Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
-        if (collaborator.isPresent() && collaborator.get().getStatus() == CollabStatus.PENDING) {
-            throw new ForbiddenException("You cannot access this board because your invitation is pending.");
-        }
-
-        return claims;
-    }
-
-    private String getIssuer(String token) {
-        try {
-            String[] parts = token.split("\\.");
-            if (parts.length != 3) {
-                return null;
-            }
-            String payload = new String(Base64.getUrlDecoder().decode(parts[1]));
-            ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> claims = mapper.readValue(payload, Map.class);
-            return (String) claims.get("iss");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null; // เกิดข้อผิดพลาด
-        }
     }
 
 }

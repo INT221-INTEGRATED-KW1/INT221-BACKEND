@@ -20,11 +20,9 @@ import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.UserOwn;
 import sit.int221.integratedproject.kanbanborad.exceptions.GeneralException;
 import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;
-import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.RefreshTokenRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.UserOwnRepository;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
-import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jwt.SignedJWT;
@@ -39,17 +37,15 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenUtil jwtTokenUtil;
     private final UserRepository userRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
     private final UserOwnRepository userOwnRepository;
 
     public AuthService(AuthenticationManager authenticationManager,
                        JwtTokenUtil jwtTokenUtil,
                        UserRepository userRepository,
-                       RefreshTokenRepository refreshTokenRepository, UserOwnRepository userOwnRepository) {
+                 UserOwnRepository userOwnRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtTokenUtil = jwtTokenUtil;
         this.userRepository = userRepository;
-        this.refreshTokenRepository = refreshTokenRepository;
         this.userOwnRepository = userOwnRepository;
     }
 
@@ -100,7 +96,7 @@ public class AuthService {
     }
 
     public RefreshTokenResponseDTO refreshAccessToken(Claims claims) {
-        String oid = claims.get("oid", String.class);
+        String oid = JwtTokenUtil.getOidFromClaims(claims);
 
         User user = userRepository.findByOid(oid)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));

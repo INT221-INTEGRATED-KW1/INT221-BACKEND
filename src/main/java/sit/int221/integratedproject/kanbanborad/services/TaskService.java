@@ -1,11 +1,14 @@
 package sit.int221.integratedproject.kanbanborad.services;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.transaction.Transactional;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 import sit.int221.integratedproject.kanbanborad.dtos.request.TaskRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.request.TaskUpdateRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.*;
@@ -22,6 +25,9 @@ import sit.int221.integratedproject.kanbanborad.utils.Utils;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static sit.int221.integratedproject.kanbanborad.utils.Utils.extractClaimsFromMicrosoftToken;
+import static sit.int221.integratedproject.kanbanborad.utils.Utils.isMicrosoftToken;
+
 @Service
 public class TaskService {
     private final TaskRepository taskRepository;
@@ -32,8 +38,9 @@ public class TaskService {
     private final CollaboratorRepository collaboratorRepository;
     private final FileService fileService;
     private final AttachmentRepository attachmentRepository;
+    private final JwtTokenUtil jwtTokenUtil;
 
-    public TaskService(TaskRepository taskRepository, StatusRepository statusRepository, ModelMapper modelMapper, ListMapper listMapper, BoardRepository boardRepository, CollaboratorRepository collaboratorRepository, FileService fileService, AttachmentRepository attachmentRepository) {
+    public TaskService(TaskRepository taskRepository, StatusRepository statusRepository, ModelMapper modelMapper, ListMapper listMapper, BoardRepository boardRepository, CollaboratorRepository collaboratorRepository, FileService fileService, AttachmentRepository attachmentRepository, JwtTokenUtil jwtTokenUtil) {
         this.taskRepository = taskRepository;
         this.statusRepository = statusRepository;
         this.modelMapper = modelMapper;
@@ -42,6 +49,7 @@ public class TaskService {
         this.collaboratorRepository = collaboratorRepository;
         this.fileService = fileService;
         this.attachmentRepository = attachmentRepository;
+        this.jwtTokenUtil = jwtTokenUtil;
     }
 
     public List<TaskResponseDTO> findAllTask(String id) {
@@ -233,7 +241,7 @@ public class TaskService {
         }
     }
 
-    public Board findBoardByIdAndValidateAccess(Claims claims, String id) {
+    public void findBoardByIdAndValidateAccess(Claims claims, String id) {
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
 
@@ -242,7 +250,7 @@ public class TaskService {
                 throw new ForbiddenException("Authentication required to access this board.");
             }
 
-            String oid = (String) claims.get("oid");
+            String oid = JwtTokenUtil.getOidFromClaims(claims);
 
             if (!isOwner(oid, id)) {
                 Optional<Collaborator> collaboratorOpt = collaboratorRepository.findByOidAndBoardId(oid, id);
@@ -252,12 +260,6 @@ public class TaskService {
                 }
             }
         }
-        return board;
-    }
-
-    private boolean isCollaborator(String oid, String boardId) {
-        Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
-        return collaborator.isPresent();
     }
 
     private boolean isOwner(String oid, String boardId) {
@@ -316,6 +318,117 @@ public class TaskService {
         }
 
         return attachments;
+    }
+
+    public Board getBoardOrThrow(String boardId) {
+        return boardRepository.findById(boardId)
+                .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
+    }
+
+    public Claims validateToken(String token) {
+        return Utils.getClaims(token, jwtTokenUtil);
+    }
+
+    public void validateOwnership(Claims claims, String boardId) {
+        String oid = JwtTokenUtil.getOidFromClaims(claims);
+        if (!isOwner(oid, boardId) && !isCollaborator(oid, boardId)) {
+            throw new ForbiddenException("You are not allowed to access this board.");
+        }
+
+        Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
+        if (collaborator.isPresent() && collaborator.get().getStatus() == CollabStatus.PENDING) {
+            throw new ForbiddenException("You cannot access this board because your invitation is pending.");
+        }
+    }
+
+    public boolean isPublicBoard(Board board) {
+        return board.getVisibility().equalsIgnoreCase("PUBLIC");
+    }
+
+    public Claims validateTokenAndOwnership(String token, String boardId) {
+        if (token == null || !token.startsWith("Bearer ")) {
+            throw new ForbiddenException("Authentication required to access this board.");
+        }
+
+        String jwtToken = JwtTokenUtil.getJwtFromAuthorizationHeader(token);
+        Claims claims;
+        try {
+            claims = jwtTokenUtil.getAllClaimsFromToken(jwtToken);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unable to get JWT Token");
+        } catch (ExpiredJwtException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "JWT Token has expired");
+        }
+
+        validateOwnership(claims, boardId);
+
+        if (!isOwner((String) claims.get("oid"), boardId) && !hasWriteAccess((String) claims.get("oid"), boardId)) {
+            throw new ForbiddenException("You are not allowed to modify this board.");
+        }
+
+        return claims;
+    }
+
+    public Board validateBoardAndOwnership(String boardId, String token) {
+        Board board = getBoardOrThrow(boardId);
+        Claims claims;
+
+        if (isMicrosoftToken(token)) {
+            claims = validateMicrosoftTokenForModify(token, boardId);
+        } else {
+            claims = validateTokenAndOwnership(token, boardId);
+        }
+        return board;
+    }
+
+    public boolean isCollaborator(String oid, String boardId) {
+        Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
+        return collaborator.isPresent();
+    }
+
+    public boolean hasWriteAccess(String oid, String boardId) {
+        Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
+
+        return collaborator.map(value -> value.getAccessRight().equalsIgnoreCase("WRITE")).orElse(false);
+    }
+
+    public Claims validateMicrosoftTokenForModify(String token, String boardId) {
+        if (token == null || !token.startsWith("Bearer ")) {
+            throw new ForbiddenException("Authentication required to access this board.");
+        }
+
+        String jwtToken = JwtTokenUtil.getJwtFromAuthorizationHeader(token);
+        Claims claims;
+        try {
+            claims = extractClaimsFromMicrosoftToken(jwtToken);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Microsoft Token");
+        }
+
+        String oid = jwtTokenUtil.getOidFromToken(jwtToken);
+
+        if (!isOwner(oid, boardId) && !hasWriteAccess(oid, boardId)) {
+            throw new ForbiddenException("You are not allowed to modify this board.");
+        }
+
+        return claims;
+    }
+
+    public Claims validateMicrosoftTokenAndAuthorization(String token, String boardId) {
+        Claims claims = extractClaimsFromMicrosoftToken(token);
+
+        String oid = jwtTokenUtil.getOidFromToken(token);
+
+        if (!isOwner(oid, boardId) && !isCollaborator(oid, boardId)) {
+            throw new ForbiddenException("You are not allowed to access this board.");
+        }
+
+        Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
+        if (collaborator.isPresent() && collaborator.get().getStatus() == CollabStatus.PENDING) {
+            throw new ForbiddenException("You cannot access this board because your invitation is pending.");
+        }
+
+        return claims;
     }
 
 }
