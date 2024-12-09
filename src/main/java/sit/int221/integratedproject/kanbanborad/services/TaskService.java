@@ -328,7 +328,7 @@ public class TaskService {
     }
 
     public void validateOwnership(Claims claims, String boardId) {
-        String oid = JwtTokenUtil.getOidFromClaims(claims);
+        String oid = claims.get("oid", String.class);
         if (!isOwner(oid, boardId) && !isCollaborator(oid, boardId)) {
             throw new ForbiddenException("You are not allowed to access this board.");
         }
@@ -403,7 +403,7 @@ public class TaskService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Microsoft Token");
         }
 
-        String oid = jwtTokenUtil.getOidFromToken(jwtToken);
+        String oid = claims.get("oid", String.class);
 
         if (!isOwner(oid, boardId) && !hasWriteAccess(oid, boardId)) {
             throw new ForbiddenException("You are not allowed to modify this board.");
@@ -415,7 +415,7 @@ public class TaskService {
     public Claims validateMicrosoftTokenAndAuthorization(String token, String boardId) {
         Claims claims = Utils.extractClaimsFromMicrosoftToken(token);
 
-        String oid = jwtTokenUtil.getOidFromToken(token);
+        String oid = claims.get("oid", String.class);
 
         if (!isOwner(oid, boardId) && !isCollaborator(oid, boardId)) {
             throw new ForbiddenException("You are not allowed to access this board.");

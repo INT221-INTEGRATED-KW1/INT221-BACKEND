@@ -136,7 +136,7 @@ public class BoardService {
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
 
-        validateOwnership(claims, id);
+        validateReadOwnership(claims, id);
 
         UserOwn user = userOwnRepository.findById(board.getOid())
                 .orElseThrow(() -> new ItemNotFoundException("User Id " + board.getOid() + " DOES NOT EXIST !!!"));
@@ -270,7 +270,7 @@ public class BoardService {
         return dto;
     }
 
-    private void validateOwnership(Claims claims, String boardId) {
+    private void validateReadOwnership(Claims claims, String boardId) {
         String oid = JwtTokenUtil.getOidFromClaims(claims);
 
         if (isOwner(oid, boardId)) {
@@ -295,14 +295,10 @@ public class BoardService {
         return collaborator.isPresent();
     }
 
-    public Board validateBoardAndOwnership(String boardId, Claims claims) {
-        Board board = getBoardOrThrow(boardId);
-        String oid = JwtTokenUtil.getOidFromClaims(claims);
-
+    public void validateOwnership(Claims claims, String boardId) {
+        String oid = (String) claims.get("oid");
         if (!isOwner(oid, boardId)) {
             throw new ForbiddenException("You are not allowed to access this board.");
         }
-        return board;
     }
-
 }

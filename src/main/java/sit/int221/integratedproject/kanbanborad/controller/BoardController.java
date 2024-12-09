@@ -17,6 +17,9 @@ import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
 import java.util.List;
 
+import static sit.int221.integratedproject.kanbanborad.utils.Utils.extractClaimsFromMicrosoftToken;
+import static sit.int221.integratedproject.kanbanborad.utils.Utils.isMicrosoftToken;
+
 @RestController
 @RequestMapping("/v3/boards")
 @CrossOrigin(origins = "http://localhost")
@@ -25,7 +28,7 @@ public class BoardController {
     private final JwtTokenUtil jwtTokenUtil;
     private final CollaboratorService collaboratorService;
 
-    public BoardController(BoardService boardService, JwtTokenUtil jwtTokenUtil,  CollaboratorService collaboratorService) {
+    public BoardController(BoardService boardService, JwtTokenUtil jwtTokenUtil, CollaboratorService collaboratorService) {
         this.boardService = boardService;
         this.jwtTokenUtil = jwtTokenUtil;
         this.collaboratorService = collaboratorService;
@@ -38,7 +41,13 @@ public class BoardController {
         }
         String jwtToken = JwtTokenUtil.getJwtFromAuthorizationHeader(token);
 
-        Claims claims = extractClaims(jwtToken);
+        Claims claims;
+
+        if (isMicrosoftToken(jwtToken)) {
+            claims = extractClaimsFromMicrosoftToken(jwtToken);
+        } else {
+            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+        }
 
         return ResponseEntity.ok(boardService.getAllBoards(claims));
     }
@@ -54,7 +63,13 @@ public class BoardController {
 
         String jwtToken = JwtTokenUtil.getJwtFromAuthorizationHeader(token);
 
-        Claims claims = extractClaims(jwtToken);
+        Claims claims;
+
+        if (isMicrosoftToken(jwtToken)) {
+            claims = extractClaimsFromMicrosoftToken(jwtToken);
+        } else {
+            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+        }
 
         return ResponseEntity.ok(boardService.getBoardById(id, claims));
     }
@@ -71,7 +86,13 @@ public class BoardController {
 
         String jwtToken = JwtTokenUtil.getJwtFromAuthorizationHeader(token);
 
-        Claims claims = extractClaims(jwtToken);
+        Claims claims;
+
+        if (isMicrosoftToken(jwtToken)) {
+            claims = extractClaimsFromMicrosoftToken(jwtToken);
+        } else {
+            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+        }
 
         return ResponseEntity.ok(boardService.getCollaborators(id, claims));
     }
@@ -89,7 +110,13 @@ public class BoardController {
 
         String jwtToken = JwtTokenUtil.getJwtFromAuthorizationHeader(token);
 
-        Claims claims = extractClaims(jwtToken);
+        Claims claims;
+
+        if (isMicrosoftToken(jwtToken)) {
+            claims = extractClaimsFromMicrosoftToken(jwtToken);
+        } else {
+            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+        }
 
         return ResponseEntity.ok(boardService.getCollaboratorById(id, collabOid, claims));
     }
@@ -112,7 +139,13 @@ public class BoardController {
             @RequestBody CollaboratorStatusUpdateDTO statusUpdateDTO) {
         String jwtToken = JwtTokenUtil.getJwtFromAuthorizationHeader(token);
 
-        Claims claims = extractClaims(jwtToken);
+        Claims claims;
+
+        if (isMicrosoftToken(jwtToken)) {
+            claims = extractClaimsFromMicrosoftToken(jwtToken);
+        } else {
+            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+        }
 
         CollabAddEditResponseDTO responseDTO = collaboratorService.updateCollaboratorStatus(id, collabOid, statusUpdateDTO, claims);
 
@@ -125,7 +158,14 @@ public class BoardController {
             @RequestHeader("Authorization") String token) {
         String jwtToken = JwtTokenUtil.getJwtFromAuthorizationHeader(token);
 
-        Claims claims = extractClaims(jwtToken);
+        Claims claims;
+
+        if (isMicrosoftToken(jwtToken)) {
+            claims = extractClaimsFromMicrosoftToken(jwtToken);
+        } else {
+            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+        }
+
         String userId = JwtTokenUtil.getOidFromClaims(claims);
 
         List<CollaboratorResponseDTO> activeInvitations = collaboratorService.getActiveInvitations(boardId, userId);
@@ -137,7 +177,14 @@ public class BoardController {
             @RequestHeader("Authorization") String token) {
         String jwtToken = JwtTokenUtil.getJwtFromAuthorizationHeader(token);
 
-        Claims claims = extractClaims(jwtToken);
+        Claims claims;
+
+        if (isMicrosoftToken(jwtToken)) {
+            claims = extractClaimsFromMicrosoftToken(jwtToken);
+        } else {
+            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+        }
+
         String userId = JwtTokenUtil.getOidFromClaims(claims);
 
         List<CollaboratorResponseDTO> pendingInvitations = collaboratorService.getPendingInvitationsForCollaborator(userId);
@@ -151,7 +198,13 @@ public class BoardController {
             @RequestHeader("Authorization") String token) {
         String jwtToken = JwtTokenUtil.getJwtFromAuthorizationHeader(token);
 
-        Claims claims = extractClaims(jwtToken);
+        Claims claims;
+
+        if (isMicrosoftToken(jwtToken)) {
+            claims = extractClaimsFromMicrosoftToken(jwtToken);
+        } else {
+            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+        }
 
         CollabAddEditResponseDTO responseDTO = collaboratorService.acceptCollaboratorInvitation(id, collabOid, claims);
 
@@ -165,7 +218,14 @@ public class BoardController {
             @RequestHeader("Authorization") String token) {
         String jwtToken = JwtTokenUtil.getJwtFromAuthorizationHeader(token);
 
-        Claims claims = extractClaims(jwtToken);
+        Claims claims;
+
+        if (isMicrosoftToken(jwtToken)) {
+            claims = extractClaimsFromMicrosoftToken(jwtToken);
+        } else {
+            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+        }
+
         CollabAddEditResponseDTO responseDTO = collaboratorService.declineCollaboratorInvitation(id, collabOid, claims);
 
         return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
@@ -177,7 +237,13 @@ public class BoardController {
             @RequestHeader("Authorization") String token) {
         String jwtToken = JwtTokenUtil.getJwtFromAuthorizationHeader(token);
 
-        Claims claims = extractClaims(jwtToken);
+        Claims claims;
+
+        if (isMicrosoftToken(jwtToken)) {
+            claims = extractClaimsFromMicrosoftToken(jwtToken);
+        } else {
+            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+        }
         String userId = JwtTokenUtil.getOidFromClaims(claims);
 
         CollaboratorInvitationResponseDTO invitationDetails = collaboratorService.getInvitationDetails(boardId, userId);
@@ -214,14 +280,20 @@ public class BoardController {
 
         String jwtToken = JwtTokenUtil.getJwtFromAuthorizationHeader(token);
 
-        Claims claims = extractClaims(jwtToken);
+        Claims claims;
+
+        if (isMicrosoftToken(jwtToken)) {
+            claims = extractClaimsFromMicrosoftToken(jwtToken);
+        } else {
+            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(boardService.createBoard(claims, boardRequestDTO));
     }
 
     @PatchMapping("/{id}/maximum-status")
     public ResponseEntity<StatusLimitResponseDTO> updateBoardLimit(@PathVariable String id, @RequestBody @Valid BoardLimitRequestDTO boardDTO,
                                                                    @RequestHeader(value = "Authorization") String token) {
-        Board board = boardService.validateBoardAndOwnership(id, extractClaims(token));
+        Board board = validateBoardAndOwnership(id, token);
 
         return ResponseEntity.status(HttpStatus.OK).body(boardService.updateBoardLimit(id, boardDTO));
     }
@@ -229,19 +301,25 @@ public class BoardController {
     @PatchMapping("/{id}")
     public ResponseEntity<BoardVisibilityResponseDTO> updateBoardVisibility(@PathVariable String id, @RequestBody(required = false) @Valid BoardVisibilityRequestDTO boardDTO,
                                                                             @RequestHeader(value = "Authorization") String token) {
-        Board board = boardService.validateBoardAndOwnership(id, extractClaims(token));
+        Board board = validateBoardAndOwnership(id, token);
 
         return ResponseEntity.status(HttpStatus.OK).body(boardService.updateBoardVisibility(id, boardDTO));
     }
 
-    private Claims extractClaims(String token) {
-        String jwtToken = token.substring(7);
+    private Board validateBoardAndOwnership(String boardId, String token) {
+        Board board = boardService.getBoardOrThrow(boardId);
+        String jwtToken = JwtTokenUtil.getJwtFromAuthorizationHeader(token);
 
-        if (Utils.isMicrosoftToken(jwtToken)) {
-            return Utils.extractClaimsFromMicrosoftToken(jwtToken);
+        Claims claims;
+
+        if (isMicrosoftToken(jwtToken)) {
+            claims = extractClaimsFromMicrosoftToken(jwtToken);
         } else {
-            return Utils.getClaims(jwtToken, jwtTokenUtil);
+            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
         }
+        boardService.validateOwnership(claims, boardId);
+        return board;
     }
+
 
 }

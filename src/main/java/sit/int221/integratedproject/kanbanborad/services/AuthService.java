@@ -36,7 +36,7 @@ import java.security.interfaces.RSAPublicKey;
 @Service
 public class AuthService {
     @Value("${auth.jwk-uri}")
-    private static String AUTH_JWK_URL;
+    private String AUTH_JWK_URL;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenUtil jwtTokenUtil;
     private final UserRepository userRepository;
@@ -45,7 +45,7 @@ public class AuthService {
     public AuthService(AuthenticationManager authenticationManager,
                        JwtTokenUtil jwtTokenUtil,
                        UserRepository userRepository,
-                 UserOwnRepository userOwnRepository) {
+                       UserOwnRepository userOwnRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtTokenUtil = jwtTokenUtil;
         this.userRepository = userRepository;
@@ -145,5 +145,6 @@ public class AuthService {
             throw new RuntimeException(e);
         }
     }
+
 
 }
