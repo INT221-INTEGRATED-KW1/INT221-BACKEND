@@ -1,34 +1,19 @@
 package sit.int221.integratedproject.kanbanborad.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.Jwts;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 import sit.int221.integratedproject.kanbanborad.dtos.request.StatusRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.*;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
-import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Collaborator;
-import sit.int221.integratedproject.kanbanborad.enumeration.CollabStatus;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
-import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
-import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
-import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
-import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.CollaboratorRepository;
 import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
 import sit.int221.integratedproject.kanbanborad.services.StatusService;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
-import java.util.Base64;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/v3/boards")
@@ -36,33 +21,27 @@ import java.util.Optional;
         "https://ip23kw1.sit.kmutt.ac.th", "https://intproj23.sit.kmutt.ac.th"})
 public class StatusController {
     private final StatusService statusService;
-    private final BoardRepository boardRepository;
-    private final JwtTokenUtil jwtTokenUtil;
-    private final CollaboratorRepository collaboratorRepository;
 
-    public StatusController(StatusService statusService, BoardRepository boardRepository, JwtTokenUtil jwtTokenUtil, CollaboratorRepository collaboratorRepository) {
+    public StatusController(StatusService statusService) {
         this.statusService = statusService;
-        this.boardRepository = boardRepository;
-        this.jwtTokenUtil = jwtTokenUtil;
-        this.collaboratorRepository = collaboratorRepository;
     }
 
     @GetMapping("/{id}/statuses")
     public ResponseEntity<List<StatusResponseDetailDTO>> getAllStatus(@PathVariable String id,
                                                                       @RequestHeader(value = "Authorization", required = false) String token) {
-        Board board = getBoardOrThrow(id);
+        Board board = statusService.getBoardOrThrow(id);
 
-        if (isPublicBoard(board)) {
+        if (statusService.isPublicBoard(board)) {
             return ResponseEntity.ok(statusService.findAllStatus(null, id));
         }
 
-        String jwtToken = token.substring(7);
+        String jwtToken = JwtTokenUtil.getJwtFromAuthorizationHeader(token);
         Claims claims;
 
-        if (isMicrosoftToken(jwtToken)) {
-            claims = validateMicrosoftTokenAndAuthorization(jwtToken, id);
+        if (Utils.isMicrosoftToken(jwtToken)) {
+            claims = statusService.validateMicrosoftTokenAndAuthorization(jwtToken, id);
         } else {
-            claims = validateReadTokenAndOwnership(token, id);
+            claims = statusService.validateReadTokenAndOwnership(token, id);
         }
         return ResponseEntity.ok(statusService.findAllStatus(claims, id));
     }
@@ -70,20 +49,20 @@ public class StatusController {
     @GetMapping("/{id}/statuses/{statusId}")
     public ResponseEntity<StatusResponseDTO> getStatusById(@PathVariable String id, @PathVariable Integer statusId,
                                                            @RequestHeader(value = "Authorization", required = false) String token) {
-        Board board = getBoardOrThrow(id);
+        Board board = statusService.getBoardOrThrow(id);
 
-        if (isPublicBoard(board)) {
+        if (statusService.isPublicBoard(board)) {
             return ResponseEntity.ok(statusService.findStatusById(null, id, statusId));
         }
 
-        String jwtToken = token.substring(7);
+        String jwtToken = JwtTokenUtil.getJwtFromAuthorizationHeader(token);
 
         Claims claims;
 
-        if (isMicrosoftToken(jwtToken)) {
-            claims = validateMicrosoftTokenAndAuthorization(jwtToken, id);
+        if (Utils.isMicrosoftToken(jwtToken)) {
+            claims = statusService.validateMicrosoftTokenAndAuthorization(jwtToken, id);
         } else {
-            claims = validateReadTokenAndOwnership(token, id);
+            claims = statusService.validateReadTokenAndOwnership(token, id);
         }
         return ResponseEntity.ok(statusService.findStatusById(claims, id, statusId));
     }
@@ -92,7 +71,7 @@ public class StatusController {
     public ResponseEntity<StatusResponseDetailDTO> addNewStatus(@RequestBody(required = false) @Valid StatusRequestDTO statusDTO,
                                                                 @PathVariable String id,
                                                                 @RequestHeader(value = "Authorization") String token) {
-        Board board = validateBoardAndOwnership(id, token);
+        Board board = statusService.validateBoardAndOwnership(id, token);
 
         if (statusDTO == null) {
             throw new BadRequestException("Missing required fields.");
@@ -106,7 +85,7 @@ public class StatusController {
                                                                 @RequestBody(required = false) @Valid StatusRequestDTO statusDTO,
                                                                 @PathVariable Integer statusId,
                                                                 @RequestHeader(value = "Authorization") String token) {
-        Board board = validateBoardAndOwnership(id, token);
+        Board board = statusService.validateBoardAndOwnership(id, token);
 
         if (statusDTO == null) {
             throw new BadRequestException("Missing required fields.");
@@ -119,7 +98,7 @@ public class StatusController {
     public ResponseEntity<StatusResponseDTO> removeStatus(@PathVariable String id,
                                                           @PathVariable Integer statusId,
                                                           @RequestHeader(value = "Authorization") String token) {
-        Board board = validateBoardAndOwnership(id, token);
+        Board board = statusService.validateBoardAndOwnership(id, token);
         return ResponseEntity.status(HttpStatus.OK).body(statusService.deleteStatus(id, statusId));
     }
 
@@ -128,184 +107,11 @@ public class StatusController {
                                                                          @PathVariable Integer oldId,
                                                                          @PathVariable Integer newId,
                                                                          @RequestHeader(value = "Authorization") String token) {
-        Board board = validateBoardAndOwnership(id, token);
+        Board board = statusService.validateBoardAndOwnership(id, token);
         if (oldId.equals(newId)) {
             throw new BadRequestException("destination status for task transfer must be different from current status.");
         }
         return ResponseEntity.status(HttpStatus.OK).body(statusService.deleteTaskAndTransferStatus(id, oldId, newId));
-    }
-
-    private Board validateBoardAndOwnership(String boardId, String token) {
-        Board board = getBoardOrThrow(boardId);
-        Claims claims;
-
-        if (isMicrosoftToken(token)) {
-            claims = validateMicrosoftTokenForModify(token, boardId);
-        } else {
-             claims = validateTokenAndOwnership(token, boardId);
-        }
-        return board;
-    }
-
-    private Board getBoardOrThrow(String boardId) {
-        return boardRepository.findById(boardId)
-                .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
-    }
-
-    private Claims validateTokenAndOwnership(String token, String boardId) {
-        if (token == null || !token.startsWith("Bearer ")) {
-            throw new ForbiddenException("Authentication required to access this board.");
-        }
-
-        String jwtToken = token.substring(7);
-        Claims claims;
-        try {
-            claims = jwtTokenUtil.getAllClaimsFromToken(jwtToken);
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unable to get JWT Token");
-        } catch (ExpiredJwtException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "JWT Token has expired");
-        }
-
-        String oid = (String) claims.get("oid");
-        if (!isOwner(oid, boardId) && !hasWriteAccess(oid, boardId)) {
-            throw new ForbiddenException("You are not allowed to modify this board.");
-        }
-
-        return claims;
-    }
-
-    private Claims validateMicrosoftTokenForModify(String token, String boardId) {
-        if (token == null || !token.startsWith("Bearer ")) {
-            throw new ForbiddenException("Authentication required to access this board.");
-        }
-
-        String jwtToken = token.substring(7);
-        Claims claims;
-        try {
-            claims = extractClaimsFromMicrosoftToken(jwtToken);
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Microsoft Token");
-        }
-
-        String oid = claims.get("oid", String.class);
-
-        if (!isOwner(oid, boardId) && !hasWriteAccess(oid, boardId)) {
-            throw new ForbiddenException("You are not allowed to modify this board.");
-        }
-
-        return claims;
-    }
-
-    private Claims validateReadTokenAndOwnership(String token, String boardId) {
-        if (token == null || !token.startsWith("Bearer ")) {
-            throw new ForbiddenException("Authentication required to access this board.");
-        }
-
-        String jwtToken = token.substring(7);
-        Claims claims;
-        try {
-            claims = jwtTokenUtil.getAllClaimsFromToken(jwtToken);
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unable to get JWT Token");
-        } catch (ExpiredJwtException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "JWT Token has expired");
-        }
-
-        String oid = (String) claims.get("oid");
-
-        if (!isOwner(oid, boardId) && !isCollaborator(oid, boardId)) {
-            throw new ForbiddenException("You are not allowed to access this board.");
-        }
-
-        Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
-        if (collaborator.isPresent() && collaborator.get().getStatus() == CollabStatus.PENDING) {
-            throw new ForbiddenException("You cannot access this board because your invitation is pending.");
-        }
-
-        return claims;
-    }
-
-    private boolean isPublicBoard(Board board) {
-        return board.getVisibility().equalsIgnoreCase("PUBLIC");
-    }
-
-    private boolean isCollaborator(String oid, String boardId) {
-        Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
-        return collaborator.isPresent();
-    }
-
-    private boolean hasWriteAccess(String oid, String boardId) {
-        Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
-
-        if (collaborator.isPresent()) {
-            return collaborator.get().getAccessRight().equalsIgnoreCase("WRITE");
-        }
-
-        return false;
-    }
-
-    private boolean isOwner(String oid, String boardId) {
-        Board board = boardRepository.findById(boardId)
-                .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
-        return board.getOid().equals(oid);
-    }
-
-    private Claims extractClaimsFromMicrosoftToken(String token) {
-        try {
-            if (token.startsWith("Bearer ")) {
-                token = token.substring(7);
-            }
-            SignedJWT signedJWT = SignedJWT.parse(token);
-            JWTClaimsSet claimsSet = signedJWT.getJWTClaimsSet();
-
-            Claims claims = Jwts.claims();
-            claims.put("oid", claimsSet.getStringClaim("oid"));
-            claims.put("name", claimsSet.getStringClaim("name"));
-            claims.put("preferred_username", claimsSet.getStringClaim("preferred_username"));
-
-            return claims;
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Microsoft Token");
-        }
-    }
-
-    private boolean isMicrosoftToken(String token) {
-        String issuer = getIssuer(token);
-        return issuer != null && issuer.contains("microsoft");
-    }
-
-    private Claims validateMicrosoftTokenAndAuthorization(String token, String boardId) {
-        Claims claims = extractClaimsFromMicrosoftToken(token);
-
-        String oid = claims.get("oid", String.class);
-
-        if (!isOwner(oid, boardId) && !isCollaborator(oid, boardId)) {
-            throw new ForbiddenException("You are not allowed to access this board.");
-        }
-
-        Optional<Collaborator> collaborator = collaboratorRepository.findByOidAndBoardId(oid, boardId);
-        if (collaborator.isPresent() && collaborator.get().getStatus() == CollabStatus.PENDING) {
-            throw new ForbiddenException("You cannot access this board because your invitation is pending.");
-        }
-
-        return claims;
-    }
-
-    private String getIssuer(String token) {
-        try {
-            String[] parts = token.split("\\.");
-            if (parts.length != 3) {
-                return null;
-            }
-            String payload = new String(Base64.getUrlDecoder().decode(parts[1]));
-            ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> claims = mapper.readValue(payload, Map.class);
-            return (String) claims.get("iss");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null; // เกิดข้อผิดพลาด
-        }
     }
 
 }

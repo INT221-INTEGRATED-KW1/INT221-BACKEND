@@ -1,3 +1,4 @@
+
 package sit.int221.integratedproject.kanbanborad.services;
 
 import io.jsonwebtoken.Claims;
@@ -8,7 +9,6 @@ import sit.int221.integratedproject.kanbanborad.dtos.request.BoardLimitRequestDT
 import sit.int221.integratedproject.kanbanborad.dtos.request.BoardRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.request.BoardVisibilityRequestDTO;
 import sit.int221.integratedproject.kanbanborad.dtos.response.*;
-import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Board;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Collaborator;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.Status;
@@ -17,12 +17,10 @@ import sit.int221.integratedproject.kanbanborad.enumeration.CollabStatus;
 import sit.int221.integratedproject.kanbanborad.exceptions.BadRequestException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
 import sit.int221.integratedproject.kanbanborad.exceptions.ItemNotFoundException;
-import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.BoardRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.CollaboratorRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.StatusRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.UserOwnRepository;
-import sit.int221.integratedproject.kanbanborad.utils.ListMapper;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
 import java.util.ArrayList;
@@ -33,20 +31,14 @@ import java.util.stream.Collectors;
 @Service
 public class BoardService {
     private final BoardRepository boardRepository;
-    private final ListMapper listMapper;
     private final ModelMapper modelMapper;
-    private final UserRepository userRepository;
-    private final JwtTokenUtil jwtTokenUtil;
     private final StatusRepository statusRepository;
     private final CollaboratorRepository collaboratorRepository;
     private final UserOwnRepository userOwnRepository;
 
-    public BoardService(BoardRepository boardRepository, ListMapper listMapper, ModelMapper modelMapper, UserRepository userRepository, JwtTokenUtil jwtTokenUtil, StatusRepository statusRepository, CollaboratorRepository collaboratorRepository, UserOwnRepository userOwnRepository) {
+    public BoardService(BoardRepository boardRepository,  ModelMapper modelMapper, StatusRepository statusRepository, CollaboratorRepository collaboratorRepository, UserOwnRepository userOwnRepository) {
         this.boardRepository = boardRepository;
-        this.listMapper = listMapper;
         this.modelMapper = modelMapper;
-        this.userRepository = userRepository;
-        this.jwtTokenUtil = jwtTokenUtil;
         this.statusRepository = statusRepository;
         this.collaboratorRepository = collaboratorRepository;
         this.userOwnRepository = userOwnRepository;
@@ -83,7 +75,7 @@ public class BoardService {
     }
 
     public BoardsResponseDTO getAllBoards(Claims claims) {
-        String oid = (String) claims.get("oid");
+        String oid = JwtTokenUtil.getOidFromClaims(claims);
 
         UserOwn user = userOwnRepository.findById(oid)
                 .orElseThrow(() -> new ItemNotFoundException("User Id " + oid + " DOES NOT EXIST !!!"));
@@ -144,7 +136,7 @@ public class BoardService {
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + id + " DOES NOT EXIST !!!"));
 
-        validateOwnership(claims, id);
+        validateReadOwnership(claims, id);
 
         UserOwn user = userOwnRepository.findById(board.getOid())
                 .orElseThrow(() -> new ItemNotFoundException("User Id " + board.getOid() + " DOES NOT EXIST !!!"));
@@ -153,7 +145,7 @@ public class BoardService {
     }
 
     public BoardResponseDTO createBoard(Claims claims, BoardRequestDTO boardRequestDTO) {
-        String oid = (String) claims.get("oid");
+        String oid = JwtTokenUtil.getOidFromClaims(claims);
         UserOwn user = userOwnRepository.findById(oid)
                 .orElseThrow(() -> new ItemNotFoundException("User Id " + oid + " DOES NOT EXIST !!!"));
 
@@ -240,16 +232,16 @@ public class BoardService {
         return responseDTO;
     }
 
-    private Board getBoardOrThrow(String boardId) {
+    public Board getBoardOrThrow(String boardId) {
         return boardRepository.findById(boardId)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
     }
 
     private void validateAccess(Claims claims, Board board) {
-        String oid = (String) claims.get("oid");
+        String userId = JwtTokenUtil.getOidFromClaims(claims);
 
-        if (!isPublicBoard(board) && !isOwner(oid, board.getId())) {
-            Optional<Collaborator> collaboratorOpt = collaboratorRepository.findByOidAndBoardId(oid, board.getId());
+        if (!isPublicBoard(board) && !isOwner(userId, board.getId())) {
+            Optional<Collaborator> collaboratorOpt = collaboratorRepository.findByOidAndBoardId(userId, board.getId());
 
             if (collaboratorOpt.isEmpty() || collaboratorOpt.get().getStatus() == CollabStatus.PENDING) {
                 throw new ForbiddenException("You are not allowed to access this board.");
@@ -257,18 +249,14 @@ public class BoardService {
         }
     }
 
-    private boolean isPublicBoard(Board board) {
+    public boolean isPublicBoard(Board board) {
         return board.getVisibility().equalsIgnoreCase("PUBLIC");
     }
 
-    private boolean isOwner(String oid, String boardId) {
+    public boolean isOwner(String oid, String boardId) {
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new ItemNotFoundException("Board Id " + boardId + " DOES NOT EXIST !!!"));
         return board.getOid().equals(oid);
-    }
-
-    private boolean isCollaborator(String oid, Board board) {
-        return collaboratorRepository.findByBoardIdAndOid(board.getId(), oid).isPresent();
     }
 
     private CollaboratorResponseDTO convertToCollaboratorDTO(Collaborator collaborator) {
@@ -282,8 +270,8 @@ public class BoardService {
         return dto;
     }
 
-    private void validateOwnership(Claims claims, String boardId) {
-        String oid = (String) claims.get("oid");
+    private void validateReadOwnership(Claims claims, String boardId) {
+        String oid = JwtTokenUtil.getOidFromClaims(claims);
 
         if (isOwner(oid, boardId)) {
             return;
@@ -307,4 +295,10 @@ public class BoardService {
         return collaborator.isPresent();
     }
 
+    public void validateOwnership(Claims claims, String boardId) {
+        String oid = (String) claims.get("oid");
+        if (!isOwner(oid, boardId)) {
+            throw new ForbiddenException("You are not allowed to access this board.");
+        }
+    }
 }
