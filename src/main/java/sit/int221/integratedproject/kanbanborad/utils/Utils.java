@@ -1,3 +1,4 @@
+
 package sit.int221.integratedproject.kanbanborad.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -6,9 +7,9 @@ import com.nimbusds.jwt.SignedJWT;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+import sit.int221.integratedproject.kanbanborad.config.AzureConfig;
 import sit.int221.integratedproject.kanbanborad.dtos.response.MicrosoftGraphUser;
 import sit.int221.integratedproject.kanbanborad.dtos.response.MicrosoftGraphUserResponse;
 import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
@@ -26,14 +27,6 @@ import java.util.Map;
 import java.util.Optional;
 
 public class Utils {
-    @Value("${azure.tenant-id}")
-    private static String TENANT_ID;
-    @Value("${azure.client-id}")
-    private static String CLIENT_ID;
-    @Value("${azure.client-secret}")
-    private static String CLIENT_SECRET;
-    @Value("${azure.token-url}")
-    private static String TOKEN_URL;
     public static String NO_STATUS = "No Status";
     public static String DONE = "Done";
     public static int MAX_SIZE = 10;
@@ -128,17 +121,19 @@ public class Utils {
 
     public static String getMicrosoftGraphToken(String userToken) {
         try {
+            AzureConfig azureConfig = AzureConfig.getInstance();
+
             if (userToken.startsWith("Bearer ")) {
                 userToken = userToken.substring(7);
             }
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(String.format(TOKEN_URL, TENANT_ID)))
+                    .uri(URI.create(String.format(azureConfig.getTokenUrl(), azureConfig.getTenantId())))
                     .header("Content-Type", "application/x-www-form-urlencoded")
                     .POST(HttpRequest.BodyPublishers.ofString(
-                            "client_id=" + CLIENT_ID +
+                            "client_id=" + azureConfig.getClientId() +
                                     "&scope=https://graph.microsoft.com/.default" +
-                                    "&client_secret=" + CLIENT_SECRET +
+                                    "&client_secret=" + azureConfig.getClientSecret() +
                                     "&grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer" +
                                     "&assertion=" + userToken +
                                     "&requested_token_use=on_behalf_of"))
@@ -188,6 +183,5 @@ public class Utils {
         }
         return Optional.empty();
     }
-
 
 }
