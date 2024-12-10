@@ -1,9 +1,8 @@
+
 package sit.int221.integratedproject.kanbanborad.services;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import jakarta.persistence.EntityManager;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sit.int221.integratedproject.kanbanborad.dtos.request.BoardAccessRightRequestDTO;
@@ -28,26 +27,11 @@ import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.UserOwn
 import sit.int221.integratedproject.kanbanborad.utils.ListMapper;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
 
-import java.net.URI;
-import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @Service
 public class CollaboratorService {
-    @Value("${azure.tenant-id}")
-    private static String TENANT_ID;
-    @Value("${azure.client-id}")
-    private static String CLIENT_ID;
-    @Value("${azure.client-secret}")
-    private static String CLIENT_SECRET;
-    @Value("${azure.token-url}")
-    private static String TOKEN_URL;
     private final BoardRepository boardRepository;
     private final UserRepository userRepository;
     private final CollaboratorRepository collaboratorRepository;
@@ -98,7 +82,7 @@ public class CollaboratorService {
             throw new BadRequestException("Only emails from 'ad.sit.kmutt.ac.th' domain are supported.");
         }
 
-        Optional<User> msEntraUser = findUserInMicrosoftEntra(email, token);
+        Optional<User> msEntraUser = Utils.findUserInMicrosoftEntra(email, token);
         User collaboratorUser = msEntraUser.orElseGet(() -> {
             return userRepository.findByEmail(email)
                     .orElseThrow(() -> new ItemNotFoundException("User with email " + email + " not found in MS Entra or shared database."));
@@ -401,93 +385,6 @@ public class CollaboratorService {
         } else {
             return Utils.getClaims(jwtToken, jwtTokenUtil);
         }
-    }
-
-
-    public static String fetchMicrosoftGraphUser(String accessToken, String encodedEmail) {
-        try {
-            String graphEndpoint = "https://graph.microsoft.com/v1.0/users?$filter=" + encodedEmail;
-
-            HttpRequest request = HttpRequest.newBuilder(URI.create(graphEndpoint))
-                    .header("Authorization", "Bearer " + accessToken)
-                    .GET()
-                    .build();
-
-            HttpResponse<String> response = HttpClient.newHttpClient()
-                    .send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() == 200) {
-                return response.body();
-            } else {
-                System.err.println("Failed to fetch user. Status: " + response.statusCode() + ", Body: " + response.body());
-            }
-        } catch (Exception e) {
-            System.err.println("Error fetching user from MS Graph API: " + e.getMessage());
-        }
-        return null;
-    }
-
-    public String getMicrosoftGraphToken(String userToken) {
-        try {
-            if (userToken.startsWith("Bearer ")) {
-                userToken = userToken.substring(7);
-            }
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(String.format(TOKEN_URL, TENANT_ID)))
-                    .header("Content-Type", "application/x-www-form-urlencoded")
-                    .POST(HttpRequest.BodyPublishers.ofString(
-                            "client_id=" + CLIENT_ID +
-                                    "&scope=https://graph.microsoft.com/.default" +
-                                    "&client_secret=" + CLIENT_SECRET +
-                                    "&grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer" +
-                                    "&assertion=" + userToken +
-                                    "&requested_token_use=on_behalf_of"))
-                    .build();
-
-            HttpResponse<String> response = HttpClient.newHttpClient()
-                    .send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() == 200) {
-                Map<String, Object> tokenResponse = new ObjectMapper().readValue(response.body(), Map.class);
-                return (String) tokenResponse.get("access_token");
-            } else {
-                System.err.println("Failed to fetch token. Status: " + response.statusCode() + ", Body: " + response.body());
-            }
-        } catch (Exception e) {
-            System.err.println("Error fetching Microsoft Graph token: " + e.getMessage());
-        }
-        return null;
-    }
-
-    public  Optional<User> findUserInMicrosoftEntra(String email, String userToken) {
-        try {
-            String encodedEmail = URLEncoder.encode("mail eq '" + email + "'", StandardCharsets.UTF_8);
-
-            String accessToken =  getMicrosoftGraphToken(userToken);
-            if (accessToken == null) {
-                throw new RuntimeException("Failed to retrieve Microsoft Graph Token.");
-            }
-
-            String responseBody = fetchMicrosoftGraphUser(accessToken, encodedEmail);
-            if (responseBody == null) {
-                return Optional.empty();
-            }
-
-            MicrosoftGraphUserResponse graphResponse = new ObjectMapper().readValue(responseBody, MicrosoftGraphUserResponse.class);
-            if (!graphResponse.getValue().isEmpty()) {
-                MicrosoftGraphUser graphUser = graphResponse.getValue().get(0);
-                User user = new User();
-                user.setOid(graphUser.getId());
-                user.setName(graphUser.getDisplayName());
-                user.setEmail(graphUser.getMail());
-                user.setUsername(graphUser.getUserPrincipalName());
-                return Optional.of(user);
-            }
-        } catch (Exception e) {
-            System.err.println("Error finding user in Microsoft Entra: " + e.getMessage());
-        }
-        return Optional.empty();
     }
 
 }
