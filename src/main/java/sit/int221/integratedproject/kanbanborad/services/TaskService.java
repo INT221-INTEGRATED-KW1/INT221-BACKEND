@@ -286,19 +286,19 @@ public class TaskService {
                 String uniqueFilename = String.format("%s_%d_%s", id, taskId, fileName);
 
                 if (task.getAttachments().stream().anyMatch(att -> att.getFilename().equals(uniqueFilename))) {
-                    errorMessages.add("File with the same filename cannot be added. Please delete and add again to update the file.");
+                    errorMessages.add("Duplicate filename: " + fileName);
                     notAddedFiles.add(fileName);
                     continue;
                 }
 
                 if (file.getSize() > MAX_FILE_SIZE_MB * 1024 * 1024) {
-                    errorMessages.add("Each file cannot be larger than " + MAX_FILE_SIZE_MB + " MB.");
+                    errorMessages.add("File too large: " + fileName + " (" + MAX_FILE_SIZE_MB + " MB limit)");
                     notAddedFiles.add(fileName);
                     continue;
                 }
 
                 if (existingAttachmentCount + attachments.size() >= MAX_FILES) {
-                    errorMessages.add("Each task can have at most " + MAX_FILES + " files.");
+                    errorMessages.add("Maximum file limit reached: " + MAX_FILES);
                     notAddedFiles.add(fileName);
                     continue;
                 }
@@ -311,8 +311,9 @@ public class TaskService {
         }
 
         if (!errorMessages.isEmpty()) {
-            throw new BadRequestException(String.join(" - ", errorMessages) +
-                    "\nThe following files are not added: " + String.join(", ", notAddedFiles));
+            String errorMessage = "Errors occurred during file upload: " + String.join(" - ", errorMessages);
+            String notAddedFilesMessage = notAddedFiles.isEmpty() ? "" : "\nFiles not added: " + String.join(", ", notAddedFiles);
+            throw new BadRequestException(errorMessage + notAddedFilesMessage);
         }
 
         return attachments;

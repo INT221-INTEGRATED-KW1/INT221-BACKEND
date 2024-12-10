@@ -309,7 +309,26 @@ public class CollaboratorService {
         return new CollaboratorInvitationResponseDTO(
                 inviter.getName(),
                 collaborator.getAccessRight(),
-                board.getName()
+                board.getName(),
+                collaborator.getStatus()
+        );
+    }
+
+    public CollaboratorInvitationResponseDTO checkInvitation(String boardId, String userId) {
+        Collaborator collaborator = collaboratorRepository.findByOidAndBoardId(userId, boardId)
+                .orElseThrow(() -> new ItemNotFoundException("No collaboration record found for this user on the specified board."));
+
+        UserOwn inviter = userOwnRepository.findById(collaborator.getBoard().getOid())
+                .orElseThrow(() -> new ItemNotFoundException("Inviter not found."));
+
+        Board board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new ItemNotFoundException("Board not found."));
+
+        return new CollaboratorInvitationResponseDTO(
+                inviter.getName(),
+                collaborator.getAccessRight(),
+                board.getName(),
+                collaborator.getStatus()
         );
     }
 

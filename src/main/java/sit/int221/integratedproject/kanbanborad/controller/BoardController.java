@@ -231,6 +231,24 @@ public class BoardController {
         return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
     }
 
+    @GetMapping("/{boardId}/collabs/check-invitation")
+    public ResponseEntity<CollaboratorInvitationResponseDTO> checkInvitation(
+            @PathVariable String boardId,
+            @RequestHeader("Authorization") String token) {
+        String jwtToken = JwtTokenUtil.getJwtFromAuthorizationHeader(token);
+
+        Claims claims;
+        if (isMicrosoftToken(jwtToken)) {
+            claims = extractClaimsFromMicrosoftToken(jwtToken);
+        } else {
+            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+        }
+        String userId = JwtTokenUtil.getOidFromClaims(claims);
+
+        CollaboratorInvitationResponseDTO invitationDetails = collaboratorService.checkInvitation(boardId, userId);
+        return ResponseEntity.ok(invitationDetails);
+    }
+
     @GetMapping("/{boardId}/collabs/invitation")
     public ResponseEntity<CollaboratorInvitationResponseDTO> getInvitationDetails(
             @PathVariable String boardId,
@@ -249,6 +267,7 @@ public class BoardController {
         CollaboratorInvitationResponseDTO invitationDetails = collaboratorService.getInvitationDetails(boardId, userId);
         return ResponseEntity.ok(invitationDetails);
     }
+
 
     @PatchMapping("/{id}/collabs/{collabOid}")
     public ResponseEntity<BoardAccessRightResponseDTO> updateBoardAccessRight(
