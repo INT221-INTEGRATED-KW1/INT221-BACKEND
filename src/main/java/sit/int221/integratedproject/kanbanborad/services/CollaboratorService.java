@@ -77,9 +77,6 @@ public class CollaboratorService {
         }
 
         String email = collaboratorRequestDTO.getEmail();
-        if (!email.endsWith(Utils.SIT_DOMAIN)) {
-            throw new BadRequestException("Only emails from 'ad.sit.kmutt.ac.th' domain are supported.");
-        }
 
         Optional<User> msEntraUser = Utils.findUserInMicrosoftEntra(email, token);
         User collaboratorUser = msEntraUser.orElseGet(() -> {
