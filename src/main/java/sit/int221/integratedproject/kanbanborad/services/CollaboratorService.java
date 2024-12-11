@@ -379,7 +379,7 @@ public class CollaboratorService {
         if (Utils.isMicrosoftToken(jwtToken)) {
             return Utils.extractClaimsFromMicrosoftToken(jwtToken);
         } else {
-            return Utils.getClaims(jwtToken, jwtTokenUtil);
+            return Utils.getClaims(token, jwtTokenUtil);
         }
     }
 
