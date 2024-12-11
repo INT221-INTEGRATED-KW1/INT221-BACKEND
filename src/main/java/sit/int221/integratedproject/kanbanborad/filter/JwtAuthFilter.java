@@ -72,9 +72,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     oid = jwtTokenUtil.getOidFromToken(jwtToken);
                     validateLocalJwt(jwtToken, oid);
                 }
-                else {
-                    throw new TokenNotWellException("JWT Token not well-formed");
-                }
 
                 if (oid != null) {
                     if (isMicrosoftToken(jwtToken)) {
