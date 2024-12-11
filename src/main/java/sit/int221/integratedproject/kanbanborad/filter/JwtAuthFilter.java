@@ -10,6 +10,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -31,6 +32,8 @@ import java.util.Map;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
+    @Value("${auth.issuer}")
+    private String ISSUER;
     private final JwtUserDetailsService jwtUserDetailsService;
     private final JwtTokenUtil jwtTokenUtil;
     private final MicrosoftUserDetailsService microsoftUserDetailsService;
@@ -67,10 +70,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
                 if (isMicrosoftToken(jwtToken)) {
                     oid = validateMicrosoftToken(jwtToken);
-                }
-                else if (isLocalJwt(jwtToken)) {
+                } else  {
                     oid = jwtTokenUtil.getOidFromToken(jwtToken);
-                    validateLocalJwt(jwtToken, oid);
                 }
 
                 if (oid != null) {
@@ -81,20 +82,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         microsoftAuthToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                         SecurityContextHolder.getContext().setAuthentication(microsoftAuthToken);
                     }
-                    else if (isLocalJwt(jwtToken)) {
+                    else {
                         UserDetails userDetails = jwtUserDetailsService.loadUserByOid(oid);
                         UsernamePasswordAuthenticationToken authToken =
                                 new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                         authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                         SecurityContextHolder.getContext().setAuthentication(authToken);
                     }
+                } else {
+                    throw new TokenNotWellException("JWT Token not well-formed");
                 }
             }
             else if (requestTokenHeader == null) {
                 throw new TokenIsMissingException("JWT Token is missing");
-            }
-            else {
-                throw new TokenNotWellException("JWT Token not well-formed");
             }
 
             chain.doFilter(request, response);
@@ -120,7 +120,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
             String payload = new String(Base64.getUrlDecoder().decode(parts[1]));
             ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> claims = mapper.readValue(payload, Map.class);
+            Map claims = mapper.readValue(payload, Map.class);
             return (String) claims.get("iss");
         } catch (Exception e) {
             e.printStackTrace();
@@ -128,14 +128,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
     }
 
-    private boolean isLocalJwt(String token) {
-        String issuer = getIssuer(token);
-        return "https://intproj23.sit.kmutt.ac.th/kw1/".equals(issuer);
-    }
-
     private boolean isMicrosoftToken(String token) {
         String issuer = getIssuer(token);
-        return issuer != null && issuer.contains("microsoft");
+        return issuer != null && issuer.equals(ISSUER);
     }
 
     private String validateMicrosoftToken(String token) {
@@ -144,12 +139,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return signedJWT.getJWTClaimsSet().getStringClaim("oid");
         } catch (Exception e) {
             throw new TokenNotWellException("Invalid Microsoft Token");
-        }
-    }
-
-    private void validateLocalJwt(String jwtToken, String oid) {
-        if (!jwtTokenUtil.validateToken(jwtToken, oid)) {
-            throw new SignatureException("Token validation failed");
         }
     }
 

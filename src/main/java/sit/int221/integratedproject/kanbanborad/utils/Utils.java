@@ -7,6 +7,7 @@ import com.nimbusds.jwt.SignedJWT;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import sit.int221.integratedproject.kanbanborad.config.AzureConfig;
@@ -81,10 +82,15 @@ public class Utils {
 
     public static String getIssuer(String token) {
         try {
+            if (token == null || token.trim().isEmpty()) {
+                return null;
+            }
+
             String[] parts = token.split("\\.");
             if (parts.length != 3) {
                 return null;
             }
+
             String payload = new String(Base64.getUrlDecoder().decode(parts[1]));
             ObjectMapper mapper = new ObjectMapper();
             Map<String, Object> claims = mapper.readValue(payload, Map.class);

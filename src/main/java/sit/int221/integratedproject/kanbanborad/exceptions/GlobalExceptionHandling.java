@@ -98,7 +98,6 @@ public class GlobalExceptionHandling {
                 .body("File size exceeds maximum limit. Please upload a smaller file.");
     }
 
-
     @ExceptionHandler(MissingRequestHeaderException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ResponseEntity<ErrorResponse> handleMissingRequestException(MissingRequestHeaderException exception, WebRequest request) {

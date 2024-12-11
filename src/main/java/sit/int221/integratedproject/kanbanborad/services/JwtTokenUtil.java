@@ -9,6 +9,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 import sit.int221.integratedproject.kanbanborad.dtos.response.AuthenticateUser;
 import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
+import sit.int221.integratedproject.kanbanborad.exceptions.ForbiddenException;
 import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;
 
 import java.io.Serializable;
@@ -17,7 +18,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
-
 
 @Component
 public class JwtTokenUtil implements Serializable {
@@ -141,7 +141,7 @@ public class JwtTokenUtil implements Serializable {
 
     public static String getJwtFromAuthorizationHeader(String authorizationHeader) {
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-            throw new IllegalArgumentException("Invalid Authorization header format");
+            throw new ForbiddenException("Authorization required for private boards.");
         }
         return authorizationHeader.substring(7);
     }

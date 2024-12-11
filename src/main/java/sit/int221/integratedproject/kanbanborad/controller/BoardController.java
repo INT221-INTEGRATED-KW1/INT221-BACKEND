@@ -47,7 +47,7 @@ public class BoardController {
         if (isMicrosoftToken(jwtToken)) {
             claims = extractClaimsFromMicrosoftToken(jwtToken);
         } else {
-            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+            claims = Utils.getClaims(token, jwtTokenUtil);
         }
 
         return ResponseEntity.ok(boardService.getAllBoards(claims));
@@ -69,7 +69,7 @@ public class BoardController {
         if (isMicrosoftToken(jwtToken)) {
             claims = extractClaimsFromMicrosoftToken(jwtToken);
         } else {
-            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+            claims = Utils.getClaims(token, jwtTokenUtil);
         }
 
         return ResponseEntity.ok(boardService.getBoardById(id, claims));
@@ -92,7 +92,7 @@ public class BoardController {
         if (isMicrosoftToken(jwtToken)) {
             claims = extractClaimsFromMicrosoftToken(jwtToken);
         } else {
-            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+            claims = Utils.getClaims(token, jwtTokenUtil);
         }
 
         return ResponseEntity.ok(boardService.getCollaborators(id, claims));
@@ -116,7 +116,7 @@ public class BoardController {
         if (isMicrosoftToken(jwtToken)) {
             claims = extractClaimsFromMicrosoftToken(jwtToken);
         } else {
-            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+            claims = Utils.getClaims(token, jwtTokenUtil);
         }
 
         return ResponseEntity.ok(boardService.getCollaboratorById(id, collabOid, claims));
@@ -145,7 +145,7 @@ public class BoardController {
         if (isMicrosoftToken(jwtToken)) {
             claims = extractClaimsFromMicrosoftToken(jwtToken);
         } else {
-            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+            claims = Utils.getClaims(token, jwtTokenUtil);
         }
 
         CollabAddEditResponseDTO responseDTO = collaboratorService.updateCollaboratorStatus(id, collabOid, statusUpdateDTO, claims);
@@ -164,7 +164,7 @@ public class BoardController {
         if (isMicrosoftToken(jwtToken)) {
             claims = extractClaimsFromMicrosoftToken(jwtToken);
         } else {
-            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+            claims = Utils.getClaims(token, jwtTokenUtil);
         }
 
         String userId = JwtTokenUtil.getOidFromClaims(claims);
@@ -183,7 +183,7 @@ public class BoardController {
         if (isMicrosoftToken(jwtToken)) {
             claims = extractClaimsFromMicrosoftToken(jwtToken);
         } else {
-            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+            claims = Utils.getClaims(token, jwtTokenUtil);
         }
 
         String userId = JwtTokenUtil.getOidFromClaims(claims);
@@ -204,7 +204,7 @@ public class BoardController {
         if (isMicrosoftToken(jwtToken)) {
             claims = extractClaimsFromMicrosoftToken(jwtToken);
         } else {
-            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+            claims = Utils.getClaims(token, jwtTokenUtil);
         }
 
         CollabAddEditResponseDTO responseDTO = collaboratorService.acceptCollaboratorInvitation(id, collabOid, claims);
@@ -224,7 +224,7 @@ public class BoardController {
         if (isMicrosoftToken(jwtToken)) {
             claims = extractClaimsFromMicrosoftToken(jwtToken);
         } else {
-            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+            claims = Utils.getClaims(token, jwtTokenUtil);
         }
 
         CollabAddEditResponseDTO responseDTO = collaboratorService.declineCollaboratorInvitation(id, collabOid, claims);
@@ -242,7 +242,7 @@ public class BoardController {
         if (isMicrosoftToken(jwtToken)) {
             claims = extractClaimsFromMicrosoftToken(jwtToken);
         } else {
-            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+            claims = Utils.getClaims(token, jwtTokenUtil);
         }
         String userId = JwtTokenUtil.getOidFromClaims(claims);
 
@@ -261,7 +261,7 @@ public class BoardController {
         if (isMicrosoftToken(jwtToken)) {
             claims = extractClaimsFromMicrosoftToken(jwtToken);
         } else {
-            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+            claims = Utils.getClaims(token, jwtTokenUtil);
         }
         String userId = JwtTokenUtil.getOidFromClaims(claims);
 
@@ -305,7 +305,7 @@ public class BoardController {
         if (isMicrosoftToken(jwtToken)) {
             claims = extractClaimsFromMicrosoftToken(jwtToken);
         } else {
-            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+            claims = Utils.getClaims(token, jwtTokenUtil);
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(boardService.createBoard(claims, boardRequestDTO));
     }
@@ -335,7 +335,7 @@ public class BoardController {
         if (isMicrosoftToken(jwtToken)) {
             claims = extractClaimsFromMicrosoftToken(jwtToken);
         } else {
-            claims = Utils.getClaims(jwtToken, jwtTokenUtil);
+            claims = Utils.getClaims(token, jwtTokenUtil);
         }
         boardService.validateOwnership(claims, boardId);
         return board;
