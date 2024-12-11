@@ -21,7 +21,7 @@ import java.util.function.Function;
 
 @Component
 public class JwtTokenUtil implements Serializable {
-    @Value("${auth.issuer}")
+    @Value("${local.issuer}")
     private String ISSUER;
     @Value("${jwt.secret}")
     private String SECRET_KEY;
