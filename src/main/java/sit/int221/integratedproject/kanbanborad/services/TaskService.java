@@ -2,6 +2,8 @@ package sit.int221.integratedproject.kanbanborad.services;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import jakarta.transaction.Transactional;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Sort;
@@ -353,10 +355,12 @@ public class TaskService {
         Claims claims;
         try {
             claims = jwtTokenUtil.getAllClaimsFromToken(jwtToken);
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unable to get JWT Token");
+        } catch (SignatureException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "JWT Token has been tampered with");
         } catch (ExpiredJwtException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "JWT Token has expired");
+        }  catch (MalformedJwtException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "JWT Token not well-formed");
         }
 
         validateOwnership(claims, boardId);

@@ -7,6 +7,8 @@ import com.nimbusds.jwt.SignedJWT;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -49,10 +51,12 @@ public class Utils {
         String jwtToken = token.substring(7);
         try {
             return jwtTokenUtil.getAllClaimsFromToken(jwtToken);
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unable to get JWT Token");
+        } catch (SignatureException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "JWT Token has been tampered with");
         } catch (ExpiredJwtException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "JWT Token has expired");
+        }  catch (MalformedJwtException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "JWT Token not well-formed");
         }
     }
 

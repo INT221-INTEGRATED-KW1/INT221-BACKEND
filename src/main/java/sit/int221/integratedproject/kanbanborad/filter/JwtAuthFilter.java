@@ -89,14 +89,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                         SecurityContextHolder.getContext().setAuthentication(authToken);
                     }
-                } else {
-                    throw new TokenNotWellException("JWT Token not well-formed");
                 }
             }
             else if (requestTokenHeader == null) {
                 throw new TokenIsMissingException("JWT Token is missing");
             }
-
+            else {
+                throw new TokenNotWellException("JWT Token not well-formed");
+            }
             chain.doFilter(request, response);
 
         } catch (ExpiredJwtException e) {

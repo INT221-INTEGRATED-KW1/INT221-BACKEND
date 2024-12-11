@@ -116,6 +116,19 @@ public class GlobalExceptionHandling {
         return buildErrorResponse(exception, exception.getMessage(), HttpStatus.BAD_REQUEST, request);
     }
 
+    @ExceptionHandler(TokenExpiredException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ResponseEntity<ErrorResponse> handleTokenExpiredException(TokenExpiredException exception, WebRequest request) {
+        return buildErrorResponse(exception, exception.getMessage(), HttpStatus.UNAUTHORIZED, request);
+    }
+
+    @ExceptionHandler(TokenNotWellException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ResponseEntity<ErrorResponse> handleTokenNotWellException(TokenNotWellException exception, WebRequest request) {
+        return buildErrorResponse(exception, exception.getMessage(), HttpStatus.UNAUTHORIZED, request);
+    }
+
+
     @ExceptionHandler(AuthenticationException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ResponseEntity<ErrorResponse> handleUnAuthorizationException(AuthenticationException exception, WebRequest request) {

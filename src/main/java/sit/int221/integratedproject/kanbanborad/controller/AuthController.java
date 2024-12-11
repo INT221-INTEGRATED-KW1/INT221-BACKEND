@@ -14,6 +14,7 @@ import sit.int221.integratedproject.kanbanborad.dtos.request.MicrosoftTokenReque
 import sit.int221.integratedproject.kanbanborad.dtos.response.LoginResponseDTO;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.UserOwn;
 import sit.int221.integratedproject.kanbanborad.exceptions.GeneralException;
+import sit.int221.integratedproject.kanbanborad.exceptions.TokenNotWellException;
 import sit.int221.integratedproject.kanbanborad.services.AuthService;
 import sit.int221.integratedproject.kanbanborad.services.JwtTokenUtil;
 
@@ -46,8 +47,8 @@ public class AuthController {
         try {
             UserOwn user = authService.loginWithMicrosoft(microsoftTokenRequest);
             return ResponseEntity.status(HttpStatus.OK).body(user);
-        } catch (GeneralException e) {
-            throw new GeneralException("There is a problem. Please try again later.");
+        } catch (TokenNotWellException e) {
+            throw new TokenNotWellException("Invalid Microsoft Token");
         }
     }
 

@@ -20,6 +20,8 @@ import sit.int221.integratedproject.kanbanborad.dtos.response.RefreshTokenRespon
 import sit.int221.integratedproject.kanbanborad.entities.itbkkshared.User;
 import sit.int221.integratedproject.kanbanborad.entities.kanbanboard.UserOwn;
 import sit.int221.integratedproject.kanbanborad.exceptions.GeneralException;
+import sit.int221.integratedproject.kanbanborad.exceptions.TokenExpiredException;
+import sit.int221.integratedproject.kanbanborad.exceptions.TokenNotWellException;
 import sit.int221.integratedproject.kanbanborad.repositories.itbkkshared.UserRepository;
 import sit.int221.integratedproject.kanbanborad.repositories.kanbanboard.UserOwnRepository;
 import sit.int221.integratedproject.kanbanborad.utils.Utils;
@@ -32,6 +34,8 @@ import com.nimbusds.jose.jwk.source.RemoteJWKSet;
 
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
+import java.text.ParseException;
+import java.util.Date;
 
 @Service
 public class AuthService {
@@ -93,8 +97,8 @@ public class AuthService {
             user.setEmail(payload.getEmail());
 
             return userOwnRepository.save(user);
-        } catch (Exception e) {
-            throw new GeneralException("Unable to process Microsoft token.");
+        } catch (TokenNotWellException e) {
+            throw new TokenNotWellException("Unable to process Microsoft token.");
         }
     }
 
@@ -124,12 +128,18 @@ public class AuthService {
                     .orElseThrow(() -> new GeneralException("Unable to find matching JWK"));
 
             if (!jwk.getKeyType().equals(KeyType.RSA)) {
-                throw new GeneralException("Unexpected key type");
+                throw new TokenNotWellException("Unexpected key type");
             }
 
             JWSVerifier verifier = new RSASSAVerifier((RSAPublicKey) jwk.toRSAKey().toPublicKey());
             if (!signedJWT.verify(verifier)) {
-                throw new GeneralException("Invalid signature");
+                throw new TokenNotWellException("Invalid signature");
+            }
+
+            Date expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+
+            if (expirationTime.before(new Date())) {
+                throw new TokenExpiredException("Token is expired");
             }
 
             MicrosoftTokenPayload payload = new MicrosoftTokenPayload();
@@ -139,12 +149,15 @@ public class AuthService {
             payload.setEmail(signedJWT.getJWTClaimsSet().getStringClaim("preferred_username"));
 
             return payload;
+        } catch (ParseException e) {
+            throw new TokenNotWellException("Invalid Microsoft token format: " + e.getMessage());
+        } catch (TokenExpiredException e) {
+            throw new TokenExpiredException("Token is expired");
         } catch (Exception e) {
-            throw new GeneralException("Invalid Microsoft token: " + e.getMessage());
+            throw new TokenNotWellException("Invalid Microsoft token: " + e.getMessage());
         } catch (Throwable e) {
             throw new RuntimeException(e);
         }
     }
-
 
 }
